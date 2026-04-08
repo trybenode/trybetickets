@@ -9,8 +9,11 @@ const mongoConfig = {
     maxPoolSize: 10,
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
-    // bufferMaxEntries: 0,
     bufferCommands: false,
+    // Explicit TLS/SSL settings for cloud deployments
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+    tlsAllowInvalidHostnames: false,
     // MongoDB Stable API configuration
     serverApi: {
       version: ServerApiVersion.v1,
