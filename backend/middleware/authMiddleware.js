@@ -20,6 +20,7 @@ const initializeFirebase = () => {
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
         });
+        console.log("✅ Firebase Admin initialized (service account JSON)");
       } else if (process.env.FIREBASE_PROJECT_ID) {
         // Option 2: Individual environment variables
         admin.initializeApp({
@@ -29,6 +30,7 @@ const initializeFirebase = () => {
             privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
           }),
         });
+        console.log("✅ Firebase Admin initialized");
       } else {
         console.warn("⚠️  Firebase Admin not initialized - Auth middleware will be disabled");
       }

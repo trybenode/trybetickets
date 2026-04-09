@@ -65,7 +65,7 @@ const userSchema = new mongoose.Schema(
 
 // Indexes for performance
 userSchema.index({ email: 1, role: 1 });
-userSchema.index({ firebaseUID: 1 });
+// Note: firebaseUID index auto-created by unique: true
 
 // Instance method - Check if user is admin
 userSchema.methods.isAdmin = function () {

@@ -81,7 +81,7 @@ ticketSchema.pre("save", function (next) {
 ticketSchema.index({ eventId: 1, status: 1 });
 ticketSchema.index({ userId: 1, status: 1 });
 ticketSchema.index({ buyerEmail: 1 }); // For guest ticket lookup
-ticketSchema.index({ qrToken: 1 }, { unique: true });
+// Note: qrToken index auto-created by unique: true
 
 // Method to mark ticket as used
 ticketSchema.methods.checkIn = function (checkedInBy = "Scanner") {
