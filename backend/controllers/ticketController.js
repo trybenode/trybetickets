@@ -145,15 +145,26 @@ const purchaseTicket = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // Populate event details for response
-    const populatedTicket = await Ticket.findById(ticket[0]._id).populate(
-      "eventId",
-      "title date venue ticketPrice"
-    );
+    // Populate full event details for response and email
+    const populatedTicket = await Ticket.findById(ticket[0]._id).populate("eventId");
 
     // Generate QR code for the ticket
     const { generateTicketQR } = require("../utils/qrGenerator");
     const qrData = await generateTicketQR(populatedTicket);
+
+    // Send ticket confirmation email (non-blocking - don't wait for it)
+    const { sendTicketEmail } = require("../services/emailService");
+    sendTicketEmail(populatedTicket, populatedTicket.eventId, qrData.qrCodeDataURL)
+      .then((result) => {
+        if (result.success) {
+          console.log(`✅ Ticket confirmation email sent to ${populatedTicket.buyerEmail}`);
+        } else {
+          console.warn(`⚠️  Failed to send ticket email: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error(`❌ Error sending ticket email:`, error.message);
+      });
 
     res.status(201).json({
       success: true,
@@ -387,10 +398,27 @@ const cancelTicket = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
+    // Populate event details for email
+    const populatedTicket = await Ticket.findById(ticket._id).populate("eventId");
+
+    // Send cancellation email (non-blocking)
+    const { sendCancellationEmail } = require("../services/emailService");
+    sendCancellationEmail(populatedTicket, populatedTicket.eventId)
+      .then((result) => {
+        if (result.success) {
+          console.log(`✅ Cancellation email sent to ${populatedTicket.buyerEmail}`);
+        } else {
+          console.warn(`⚠️  Failed to send cancellation email: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error(`❌ Error sending cancellation email:`, error.message);
+      });
+
     res.status(200).json({
       success: true,
       message: "Ticket cancelled successfully",
-      data: ticket,
+      data: populatedTicket,
     });
   } catch (error) {
     await session.abortTransaction();
