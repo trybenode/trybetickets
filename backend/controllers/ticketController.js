@@ -151,10 +151,18 @@ const purchaseTicket = async (req, res) => {
       "title date venue ticketPrice"
     );
 
+    // Generate QR code for the ticket
+    const { generateTicketQR } = require("../utils/qrGenerator");
+    const qrData = await generateTicketQR(populatedTicket);
+
     res.status(201).json({
       success: true,
       message: "Ticket purchased successfully",
-      data: populatedTicket,
+      data: {
+        ...populatedTicket.toObject(),
+        qrCode: qrData.qrCodeDataURL,
+        verificationURL: qrData.verificationURL,
+      },
     });
   } catch (error) {
     // Abort transaction on error
@@ -450,6 +458,111 @@ const getTicketsByEvent = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get QR code image for a ticket
+ * @route   GET /api/tickets/:id/qr
+ * @access  Public (anyone with ticket ID can download QR)
+ */
+const getTicketQRCode = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ticket ID format",
+      });
+    }
+
+    const ticket = await Ticket.findById(id);
+
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        message: "Ticket not found",
+      });
+    }
+
+    // Check if ticket is valid
+    if (ticket.status === "cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "This ticket has been cancelled",
+      });
+    }
+
+    // Generate QR code as PNG buffer
+    const { generateQRBuffer, generateVerificationURL } = require("../utils/qrGenerator");
+    const verificationURL = generateVerificationURL(ticket.qrToken);
+    const qrBuffer = await generateQRBuffer(verificationURL);
+
+    // Set response headers
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Content-Disposition", `inline; filename="ticket-${ticket._id}.png"`);
+    res.setHeader("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
+
+    // Send PNG buffer
+    res.send(qrBuffer);
+  } catch (error) {
+    console.error("Error generating QR code:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate QR code",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Get ticket with QR code data
+ * @route   GET /api/tickets/:id/details
+ * @access  Public
+ */
+const getTicketWithQR = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ticket ID format",
+      });
+    }
+
+    const ticket = await Ticket.findById(id).populate(
+      "eventId",
+      "title date venue ticketPrice organizerName description"
+    );
+
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        message: "Ticket not found",
+      });
+    }
+
+    // Generate QR code data
+    const { generateTicketQR } = require("../utils/qrGenerator");
+    const qrData = await generateTicketQR(ticket);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...ticket.toObject(),
+        qrCode: qrData.qrCodeDataURL,
+        verificationURL: qrData.verificationURL,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching ticket with QR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch ticket details",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   purchaseTicket,
   getTicketById,
@@ -457,4 +570,6 @@ module.exports = {
   getTicketsByEmail,
   cancelTicket,
   getTicketsByEvent,
+  getTicketQRCode,
+  getTicketWithQR,
 };
