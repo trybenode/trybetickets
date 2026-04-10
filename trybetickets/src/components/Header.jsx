@@ -18,8 +18,9 @@ export default function Header() {
               src="/trybetckets-logo.png" 
               alt="TrybeTickets Logo" 
               width={180} 
-              height={40}
-              className="h-20 w-auto"
+              height={20}
+              style={{ width: "auto", height: "auto", maxHeight: "7rem" }}
+            //   className="h-10"
               priority
             />
           </Link>
