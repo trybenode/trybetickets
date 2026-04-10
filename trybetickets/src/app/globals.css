@@ -91,26 +91,9 @@
   }
 }
 
-/* Tailwind Theme Integration
-   ========================================================================== */
-@theme inline {
-  /* Font Families */
-  --font-sans: var(--font-body);
-  --font-heading: var(--font-heading);
-  --font-mono: var(--font-mono);
-  
-  /* Colors - Map to Tailwind */
-  --color-background: var(--color-bg-primary);
-  --color-foreground: var(--color-text-primary);
-  --color-primary: var(--color-brand-primary);
-  --color-secondary: var(--color-accent);
-}
-
 /* Base Styles
    ========================================================================== */
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
 }
 
