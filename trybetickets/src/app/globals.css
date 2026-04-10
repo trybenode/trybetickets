@@ -1,26 +1,191 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   TrybeTickets Design System - Global Styles
+   ========================================================================== */
+
+/* CSS Custom Properties - Light Mode (Default)
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand Colors - Yellow theme (logo colors) */
+  --color-brand-primary: #E6F082;    /* brand-500 (light yellow-green) */
+  --color-brand-hover: #D8D365;      /* brand-600 (olive yellow) */
+  --color-accent: #a855f7;           /* accent-500 (subtle purple) */
+  
+  /* Status Colors */
+  --color-success: #22c55e;          /* success-500 */
+  --color-error: #ef4444;            /* error-500 */
+  --color-warning: #f59e0b;          /* warning-500 */
+  --color-info: #3b82f6;             /* info-500 */
+  
+  /* Text Colors - Dark warm tones */
+  --color-text-primary: #2d2a28;     /* neutral-900 (warm dark) */
+  --color-text-secondary: #605B51;   /* neutral-600 (logo gray-brown) */
+  --color-text-tertiary: #737373;    /* neutral-500 */
+  --color-text-inverse: #fafafa;     /* neutral-50 */
+  
+  /* Background Colors */
+  --color-bg-primary: #ffffff;       /* white */
+  --color-bg-secondary: #fafafa;     /* neutral-50 */
+  --color-bg-tertiary: #f5f5f5;      /* neutral-100 */
+  --color-bg-dark: #1a1816;         /* neutral-950 (warm black) */
+  
+  /* Border Colors */
+  --color-border: #e5e5e5;          /* neutral-200 */
+  --color-border-hover: #d4d4d4;    /* neutral-300 */
+  
+  /* Typography */
+  --font-heading: var(--font-roboto), system-ui, -apple-system, sans-serif;
+  --font-body: var(--font-nunito-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  
+  /* Font Weights */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  
+  /* Spacing (rem units) */
+  --spacing-xs: 0.25rem;     /* 4px */
+  --spacing-sm: 0.5rem;      /* 8px */
+  --spacing-md: 1rem;        /* 16px */
+  --spacing-lg: 1.5rem;      /* 24px */
+  --spacing-xl: 2rem;        /* 32px */
+  --spacing-2xl: 3rem;       /* 48px */
+  
+  /* Border Radius */
+  --radius-sm: 0.25rem;      /* 4px */
+  --radius-md: 0.5rem;       /* 8px */
+  --radius-lg: 0.75rem;      /* 12px */
+  --radius-xl: 1rem;         /* 16px */
+  --radius-full: 9999px;     /* pill shape */
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Dark Mode CSS Variables
+   ========================================================================== */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Brand Colors - Lighter yellow in dark mode */
+    --color-brand-primary: #fbeb78;  /* brand-400 (light yellow) */
+    --color-brand-hover: #E6F082;    /* brand-500 */
+    --color-accent: #c084fc;         /* accent-400 (lighter purple) */
+    
+    /* Text Colors */
+    --color-text-primary: #fafafa;   /* neutral-50 */
+    --color-text-secondary: #d4d4d4; /* neutral-300 */
+    --color-text-tertiary: #a3a3a3;  /* neutral-400 */
+    
+    /* Background Colors - Dark warm tones */
+    --color-bg-primary: #1a1816;     /* neutral-950 (warm black) */
+    --color-bg-secondary: #2d2a28;   /* neutral-900 */
+    --color-bg-tertiary: #454040;    /* neutral-800 (logo charcoal) */
+    
+    /* Border Colors */
+    --color-border: #524d44;         /* neutral-700 */
+    --color-border-hover: #605B51;   /* neutral-600 (logo gray-brown) */
   }
 }
 
+/* Tailwind Theme Integration
+   ========================================================================== */
+@theme inline {
+  /* Font Families */
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+  
+  /* Colors - Map to Tailwind */
+  --color-background: var(--color-bg-primary);
+  --color-foreground: var(--color-text-primary);
+  --color-primary: var(--color-brand-primary);
+  --color-secondary: var(--color-accent);
+}
+
+/* Base Styles
+   ========================================================================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px; /* 1rem = 16px */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  min-height: 100vh;
+  transition: background var(--transition-base), color var(--transition-base);
+}
+
+/* Typography Utilities
+   ========================================================================== */
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Smooth Scrolling
+   ========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Focus Visible (Accessibility)
+   ========================================================================== */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+/* Selection Styles
+   ========================================================================== */
+::selection {
+  background-color: var(--color-brand-primary);
+  color: white;
+}
+
+/* Scrollbar Styles (Webkit)
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
 }
