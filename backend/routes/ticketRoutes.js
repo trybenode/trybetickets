@@ -5,6 +5,7 @@ const {
   authenticate,
   optionalAuth,
   isAdmin,
+  isAdminOrEventOwner,
   validatePurchaseTicket,
   validateObjectId,
   validatePagination,
@@ -40,12 +41,12 @@ router.get("/email/:email", validateEmail, ticketController.getTicketsByEmail);
 /**
  * @route   GET /api/tickets/event/:eventId
  * @desc    Get all tickets for an event
- * @access  Private/Admin
+ * @access  Private/Admin or Event Owner
  */
 router.get(
   "/event/:eventId",
   authenticate,
-  isAdmin,
+  isAdminOrEventOwner,
   validateObjectId("eventId"),
   validatePagination,
   ticketController.getTicketsByEvent

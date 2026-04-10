@@ -4,6 +4,8 @@ const { eventController } = require("../controllers");
 const {
   authenticate,
   isAdmin,
+  isApprovedOrganizer,
+  isAdminOrEventOwner,
   validateCreateEvent,
   validateUpdateEvent,
   validateObjectId,
@@ -18,6 +20,19 @@ const {
 router.get("/", validatePagination, eventController.getAllEvents);
 
 /**
+ * @route   GET /api/events/my-events
+ * @desc    Get organizer's own events
+ * @access  Private/Approved Organizer
+ */
+router.get(
+  "/my-events",
+  authenticate,
+  isApprovedOrganizer,
+  validatePagination,
+  eventController.getMyEvents
+);
+
+/**
  * @route   GET /api/events/:id
  * @desc    Get single event by ID
  * @access  Public
@@ -27,12 +42,12 @@ router.get("/:id", validateObjectId(), eventController.getEventById);
 /**
  * @route   POST /api/events
  * @desc    Create new event
- * @access  Private/Admin
+ * @access  Private/Approved Organizer
  */
 router.post(
   "/",
   authenticate,
-  isAdmin,
+  isApprovedOrganizer,
   validateCreateEvent,
   eventController.createEvent
 );
@@ -40,12 +55,12 @@ router.post(
 /**
  * @route   PUT /api/events/:id
  * @desc    Update event
- * @access  Private/Admin
+ * @access  Private/Admin or Event Owner
  */
 router.put(
   "/:id",
   authenticate,
-  isAdmin,
+  isAdminOrEventOwner,
   validateObjectId(),
   validateUpdateEvent,
   eventController.updateEvent
@@ -54,12 +69,12 @@ router.put(
 /**
  * @route   DELETE /api/events/:id
  * @desc    Delete event (soft delete if tickets sold)
- * @access  Private/Admin
+ * @access  Private/Admin or Event Owner
  */
 router.delete(
   "/:id",
   authenticate,
-  isAdmin,
+  isAdminOrEventOwner,
   validateObjectId(),
   eventController.deleteEvent
 );
@@ -67,12 +82,12 @@ router.delete(
 /**
  * @route   GET /api/events/:id/analytics
  * @desc    Get event analytics and statistics
- * @access  Private/Admin
+ * @access  Private/Admin or Event Owner
  */
 router.get(
   "/:id/analytics",
   authenticate,
-  isAdmin,
+  isAdminOrEventOwner,
   validateObjectId(),
   eventController.getEventAnalytics
 );
