@@ -30,6 +30,9 @@ export default function Header() {
             <Link href="/events" className="text-[#454040] hover:text-[#a855f7] transition-colors font-medium">
               Browse Events
             </Link>
+            <Link href="/dashboard" className="text-[#454040] hover:text-[#a855f7] transition-colors font-medium">
+              Dashboard
+            </Link>
             <Link href="/organizers" className="text-[#454040] hover:text-[#a855f7] transition-colors font-medium">
               For Organizers
             </Link>
@@ -75,6 +78,9 @@ export default function Header() {
           <div className="md:hidden mt-4 pb-4 space-y-3">
             <Link href="/events" className="block py-2 text-[#454040] hover:text-[#a855f7] font-medium">
               Browse Events
+            </Link>
+            <Link href="/dashboard" className="block py-2 text-[#454040] hover:text-[#a855f7] font-medium">
+              Dashboard
             </Link>
             <Link href="/organizers" className="block py-2 text-[#454040] hover:text-[#a855f7] font-medium">
               For Organizers
