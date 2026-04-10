@@ -2,11 +2,13 @@ import { Roboto, Nunito_Sans} from "next/font/google";
 import "./globals.css";
 
 const roboto = Roboto({
+  weight: ['400', '500', '600', '700'],
   variable: "--font-roboto",
   subsets: ["latin"],
 });
 
 const nunitoSans = Nunito_Sans({
+  weight: ['400', '500', '600', '700'],
   variable: "--font-nunito-sans",
   subsets: ["latin"],
 });
