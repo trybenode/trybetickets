@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Button from '@/components/ui/Button';
@@ -8,13 +8,14 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 
 export default function EventDetailsPage({ params }) {
+  const resolvedParams = use(params);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketQuantity, setTicketQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('details');
 
-  // Mock event data - in real app, fetch based on params.id
+  // Mock event data - in real app, fetch based on resolvedParams.id
   const event = {
-    id: params.id,
+    id: resolvedParams.id,
     title: 'Summer Music Festival 2026',
     date: 'June 15, 2026',
     time: '6:00 PM - 11:00 PM',
