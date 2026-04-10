@@ -7,7 +7,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative bg-white py-24 px-6 overflow-hidden">
         {/* Decorative Purple Shadow from Top Right */}
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-[#a855f7] opacity-20 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-150 h-150 bg-[#a855f7] opacity-20 rounded-full blur-3xl"></div>
         <div className="absolute top-20 right-20 w-96 h-96 bg-[#E6F082] opacity-30 rounded-full blur-3xl"></div>
         
         <div className="max-w-7xl mx-auto relative z-10">

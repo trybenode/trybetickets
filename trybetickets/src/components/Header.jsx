@@ -42,12 +42,16 @@ export default function Header() {
 
           {/* Desktop CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
-            <Button variant="purple" size="sm">
-              Get Started
-            </Button>
+            <Link href="/login">
+              <Button variant="ghost" size="sm">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button variant="purple" size="sm">
+                Get Started
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -81,12 +85,16 @@ export default function Header() {
               Contact
             </Link>
             <div className="pt-3 space-y-2">
-              <Button variant="ghost" size="sm" fullWidth>
-                Sign In
-              </Button>
-              <Button variant="purple" size="sm" fullWidth>
-                Get Started
-              </Button>
+              <Link href="/login">
+                <Button variant="ghost" size="sm" fullWidth>
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button variant="purple" size="sm" fullWidth>
+                  Get Started
+                </Button>
+              </Link>
             </div>
           </div>
         )}
