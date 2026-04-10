@@ -29,6 +29,12 @@ const eventSchema = new mongoose.Schema(
       required: [true, "Venue is required"],
       trim: true,
     },
+    organizerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "Organizer ID is required"],
+      index: true,
+    },
     ticketPrice: {
       type: Number,
       required: [true, "Ticket price is required"],
@@ -77,10 +83,32 @@ eventSchema.virtual("isSoldOut").get(function () {
 // Indexes for performance
 eventSchema.index({ date: 1, status: 1 });
 eventSchema.index({ status: 1 });
+eventSchema.index({ organizerId: 1, status: 1 });
+
+// Virtual to populate organizer details
+eventSchema.virtual("organizer", {
+  ref: "User",
+  localField: "organizerId",
+  foreignField: "_id",
+  justOne: true,
+});
 
 // Method to check if tickets are available
 eventSchema.methods.hasAvailableTickets = function (quantity = 1) {
   return this.ticketsSold + quantity <= this.totalTickets;
+};
+
+// Method to check if user owns this event
+eventSchema.methods.isOwnedBy = function (userId) {
+  return this.organizerId.toString() === userId.toString();
+};
+
+// Method to check if user can manage this event
+eventSchema.methods.canBeManagedBy = function (user) {
+  if (user.role === "admin") return true;
+  if (user.role !== "organizer") return false;
+  if (user.organizerProfile?.status !== "approved") return false;
+  return this.organizerId.toString() === user._id.toString();
 };
 
 // Static method to find active events
@@ -88,6 +116,15 @@ eventSchema.statics.findActiveEvents = function () {
   return this.find({ status: "active", date: { $gte: new Date() } }).sort({
     date: 1,
   });
+};
+
+// Static method to find events by organizer
+eventSchema.statics.findByOrganizer = function (organizerId, includeInactive = false) {
+  const query = { organizerId };
+  if (!includeInactive) {
+    query.status = "active";
+  }
+  return this.find(query).sort({ date: -1 });
 };
 
 // Ensure virtuals are included when converting to JSON
