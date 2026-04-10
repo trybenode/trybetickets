@@ -4,6 +4,8 @@ const { verificationController } = require("../controllers");
 const {
   authenticate,
   isAdmin,
+  isApprovedOrganizer,
+  isAdminOrEventOwner,
   validateVerifyTicket,
   validateObjectId,
 } = require("../middleware");
@@ -11,12 +13,12 @@ const {
 /**
  * @route   POST /api/verify
  * @desc    Verify and check-in ticket by QR token (main scanner endpoint)
- * @access  Private/Admin (Scanner must be logged in)
+ * @access  Private/Approved Organizer (Scanner must be logged in and approved)
  */
 router.post(
   "/",
   authenticate,
-  isAdmin,
+  isApprovedOrganizer,
   validateVerifyTicket,
   verificationController.verifyTicket
 );
@@ -30,13 +32,13 @@ router.get("/check/:qrToken", verificationController.checkTicketStatus);
 
 /**
  * @route   PATCH /api/verify/checkin/:ticketId
- * @desc    Manually check-in a ticket (admin override)
- * @access  Private/Admin
+ * @desc    Manually check-in a ticket (admin or event owner override)
+ * @access  Private/Approved Organizer
  */
 router.patch(
   "/checkin/:ticketId",
   authenticate,
-  isAdmin,
+  isApprovedOrganizer,
   validateObjectId("ticketId"),
   verificationController.manualCheckIn
 );
@@ -44,12 +46,12 @@ router.patch(
 /**
  * @route   GET /api/verify/stats/:eventId
  * @desc    Get verification statistics for an event
- * @access  Private/Admin
+ * @access  Private/Admin or Event Owner
  */
 router.get(
   "/stats/:eventId",
   authenticate,
-  isAdmin,
+  isAdminOrEventOwner,
   validateObjectId("eventId"),
   verificationController.getVerificationStats
 );
