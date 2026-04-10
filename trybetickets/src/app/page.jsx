@@ -5,10 +5,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-linear-to-br from-[#E6F082] via-[#fbeb78] to-[#D8D365] py-24 px-6 overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#a855f7] opacity-10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#a855f7] opacity-10 rounded-full blur-3xl"></div>
+      <section className="relative bg-white py-24 px-6 overflow-hidden">
+        {/* Decorative Purple Shadow from Top Right */}
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-[#a855f7] opacity-20 rounded-full blur-3xl"></div>
+        <div className="absolute top-20 right-20 w-96 h-96 bg-[#E6F082] opacity-30 rounded-full blur-3xl"></div>
         
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center max-w-4xl mx-auto">
@@ -36,7 +36,7 @@ export default function Home() {
                 { number: '50K+', label: 'Happy Users' },
                 { number: '1K+', label: 'Organizers' },
               ].map((stat, i) => (
-                <div key={i} className="bg-white/60 backdrop-blur-sm rounded-lg p-4">
+                <div key={i} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="text-3xl md:text-4xl font-bold text-[#2d2a28] mb-1">{stat.number}</div>
                   <div className="text-sm text-[#605B51]">{stat.label}</div>
                 </div>

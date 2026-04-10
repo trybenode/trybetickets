@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -9,11 +10,14 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div className="col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-linear-to-br from-[#E6F082] to-[#a855f7] rounded-lg flex items-center justify-center">
-                <span className="text-2xl font-bold text-[#2d2a28]">T</span>
-              </div>
-              <span className="text-xl font-bold">TrybeTickets</span>
+            <div className="mb-4">
+              <Image 
+                src="/trybetckets-logo.png" 
+                alt="TrybeTickets Logo" 
+                width={180} 
+                height={40}
+                className="h-10 w-auto brightness-0 invert"
+              />
             </div>
             <p className="text-white/80 text-sm leading-relaxed">
               Your premier multi-tenant event ticketing platform. Create, manage, and attend amazing events.

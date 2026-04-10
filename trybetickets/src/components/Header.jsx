@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Button from '@/components/ui/Button';
 
 export default function Header() {
@@ -12,11 +13,15 @@ export default function Header() {
       <nav className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-linear-to-br from-[#E6F082] to-[#a855f7] rounded-lg flex items-center justify-center">
-              <span className="text-2xl font-bold text-[#2d2a28]">T</span>
-            </div>
-            <span className="text-2xl font-bold text-[#2d2a28]">TrybeTickets</span>
+          <Link href="/" className="flex items-center gap-3">
+            <Image 
+              src="/trybetckets-logo.png" 
+              alt="TrybeTickets Logo" 
+              width={180} 
+              height={40}
+              className="h-20 w-auto"
+              priority
+            />
           </Link>
 
           {/* Desktop Navigation */}
