@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#E6F082] via-[#fbeb78] to-[#D8D365] py-24 px-6 overflow-hidden">
+      <section className="relative bg-linear-to-br from-[#E6F082] via-[#fbeb78] to-[#D8D365] py-24 px-6 overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#a855f7] opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#a855f7] opacity-10 rounded-full blur-3xl"></div>
@@ -146,7 +146,7 @@ export default function Home() {
                   {item.description}
                 </p>
                 {i < 2 && (
-                  <div className="hidden md:block absolute top-12 -right-6 w-12 h-0.5 bg-gradient-to-r from-[#E6F082] to-[#a855f7]"></div>
+                  <div className="hidden md:block absolute top-12 -right-6 w-12 h-0.5 bg-linear-to-r from-[#E6F082] to-[#a855f7]"></div>
                 )}
               </div>
             ))}
@@ -199,7 +199,7 @@ export default function Home() {
               },
             ].map((event, i) => (
               <Card key={i} hover padding="none">
-                <div className="h-48 bg-gradient-to-br from-[#fbeb78] to-[#a855f7] relative">
+                <div className="h-48 bg-linear-to-br from-[#fbeb78] to-[#a855f7] relative">
                   <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-[#2d2a28]">
                     {event.category}
                   </div>
