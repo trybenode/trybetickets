@@ -52,6 +52,19 @@ router.get("/events/upcoming", authenticate, userController.getUserUpcomingEvent
 router.get("/", authenticate, isAdmin, validatePagination, userController.getAllUsers);
 
 /**
+ * @route   GET /api/users/:id/tickets
+ * @desc    Get specific user's tickets (Admin only)
+ * @access  Private/Admin
+ */
+router.get(
+  "/:id/tickets",
+  authenticate,
+  isAdmin,
+  validateObjectId(),
+  userController.getUserTicketsByUserId
+);
+
+/**
  * @route   GET /api/users/:id
  * @desc    Get user by ID (Admin only)
  * @access  Private/Admin

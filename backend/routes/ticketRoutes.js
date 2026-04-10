@@ -5,6 +5,7 @@ const {
   authenticate,
   optionalAuth,
   isAdmin,
+  isAdminOrEventOwner,
   validatePurchaseTicket,
   validateObjectId,
   validatePagination,
@@ -24,13 +25,6 @@ router.post(
 );
 
 /**
- * @route   GET /api/tickets/:id
- * @desc    Get ticket by ID
- * @access  Public (anyone with ticket ID can view)
- */
-router.get("/:id", validateObjectId(), ticketController.getTicketById);
-
-/**
  * @route   GET /api/tickets/qr/:qrToken
  * @desc    Get ticket by QR token (quick access without login)
  * @access  Public
@@ -45,6 +39,41 @@ router.get("/qr/:qrToken", ticketController.getTicketByQRToken);
 router.get("/email/:email", validateEmail, ticketController.getTicketsByEmail);
 
 /**
+ * @route   GET /api/tickets/event/:eventId
+ * @desc    Get all tickets for an event
+ * @access  Private/Admin or Event Owner
+ */
+router.get(
+  "/event/:eventId",
+  authenticate,
+  isAdminOrEventOwner,
+  validateObjectId("eventId"),
+  validatePagination,
+  ticketController.getTicketsByEvent
+);
+
+/**
+ * @route   GET /api/tickets/:id/qr
+ * @desc    Download QR code image for ticket
+ * @access  Public (anyone with ticket ID can download QR)
+ */
+router.get("/:id/qr", validateObjectId(), ticketController.getTicketQRCode);
+
+/**
+ * @route   GET /api/tickets/:id/details
+ * @desc    Get ticket with embedded QR code data
+ * @access  Public
+ */
+router.get("/:id/details", validateObjectId(), ticketController.getTicketWithQR);
+
+/**
+ * @route   GET /api/tickets/:id
+ * @desc    Get ticket by ID
+ * @access  Public (anyone with ticket ID can view)
+ */
+router.get("/:id", validateObjectId(), ticketController.getTicketById);
+
+/**
  * @route   PATCH /api/tickets/:id/cancel
  * @desc    Cancel a ticket
  * @access  Private/Admin or Ticket Owner
@@ -54,20 +83,6 @@ router.patch(
   authenticate,
   validateObjectId(),
   ticketController.cancelTicket
-);
-
-/**
- * @route   GET /api/tickets/event/:eventId
- * @desc    Get all tickets for an event
- * @access  Private/Admin
- */
-router.get(
-  "/event/:eventId",
-  authenticate,
-  isAdmin,
-  validateObjectId("eventId"),
-  validatePagination,
-  ticketController.getTicketsByEvent
 );
 
 module.exports = router;

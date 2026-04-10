@@ -29,13 +29,47 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "organizer", "admin"],
       default: "user",
       index: true,
     },
     isEmailVerified: {
       type: Boolean,
       default: false,
+    },
+    // Organizer-specific profile (only for role="organizer")
+    organizerProfile: {
+      companyName: {
+        type: String,
+        trim: true,
+      },
+      description: {
+        type: String,
+        trim: true,
+        maxlength: 1000,
+      },
+      website: {
+        type: String,
+        trim: true,
+      },
+      logo: {
+        type: String, // URL to logo image
+        default: null,
+      },
+      status: {
+        type: String,
+        enum: ["pending", "approved", "suspended"],
+        default: "pending",
+      },
+      approvedAt: {
+        type: Date,
+        default: null,
+      },
+      approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
     },
     // Profile info (optional)
     avatar: {
@@ -70,6 +104,28 @@ userSchema.index({ email: 1, role: 1 });
 // Instance method - Check if user is admin
 userSchema.methods.isAdmin = function () {
   return this.role === "admin";
+};
+
+// Instance method - Check if user is organizer
+userSchema.methods.isOrganizer = function () {
+  return this.role === "organizer" || this.role === "admin";
+};
+
+// Instance method - Check if organizer is approved
+userSchema.methods.isApprovedOrganizer = function () {
+  if (this.role === "admin") return true;
+  return (
+    this.role === "organizer" &&
+    this.organizerProfile?.status === "approved"
+  );
+};
+
+// Instance method - Check if user can manage event
+userSchema.methods.canManageEvent = function (event) {
+  if (this.role === "admin") return true;
+  if (this.role !== "organizer") return false;
+  if (this.organizerProfile?.status !== "approved") return false;
+  return event.organizerId.toString() === this._id.toString();
 };
 
 // Instance method - Update last login
@@ -150,6 +206,66 @@ userSchema.statics.createFromFirebase = async function (firebaseUID, userData) {
 // Static method - Get all admins
 userSchema.statics.findAdmins = function () {
   return this.find({ role: "admin", status: "active" });
+};
+
+// Static method - Get all organizers
+userSchema.statics.findOrganizers = function (status = null) {
+  const query = { role: "organizer", status: "active" };
+  if (status) {
+    query["organizerProfile.status"] = status;
+  }
+  return this.find(query).select("-firebaseUID").sort({ createdAt: -1 });
+};
+
+// Static method - Get pending organizer applications
+userSchema.statics.findPendingOrganizers = function () {
+  return this.find({
+    role: "organizer",
+    "organizerProfile.status": "pending",
+    status: "active",
+  })
+    .select("-firebaseUID")
+    .sort({ createdAt: -1 });
+};
+
+// Static method - Promote user to organizer
+userSchema.statics.promoteToOrganizer = async function (userId, organizerData) {
+  const user = await this.findById(userId);
+  if (!user) throw new Error("User not found");
+  
+  user.role = "organizer";
+  user.organizerProfile = {
+    companyName: organizerData.companyName,
+    description: organizerData.description,
+    website: organizerData.website,
+    logo: organizerData.logo,
+    status: "pending",
+  };
+  
+  return await user.save();
+};
+
+// Static method - Approve organizer
+userSchema.statics.approveOrganizer = async function (organizerId, approvedByUserId) {
+  const organizer = await this.findById(organizerId);
+  if (!organizer) throw new Error("Organizer not found");
+  if (organizer.role !== "organizer") throw new Error("User is not an organizer");
+  
+  organizer.organizerProfile.status = "approved";
+  organizer.organizerProfile.approvedAt = new Date();
+  organizer.organizerProfile.approvedBy = approvedByUserId;
+  
+  return await organizer.save();
+};
+
+// Static method - Suspend organizer
+userSchema.statics.suspendOrganizer = async function (organizerId) {
+  const organizer = await this.findById(organizerId);
+  if (!organizer) throw new Error("Organizer not found");
+  if (organizer.role !== "organizer") throw new Error("User is not an organizer");
+  
+  organizer.organizerProfile.status = "suspended";
+  return await organizer.save();
 };
 
 // Pre-save hook - Prevent email changes after verification

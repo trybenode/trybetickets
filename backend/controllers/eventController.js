@@ -31,6 +31,7 @@ const getAllEvents = async (req, res) => {
 
     // Execute query
     const events = await Event.find(query)
+      .populate("organizerId", "email organizerProfile.companyName")
       .sort({ date: 1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -121,7 +122,7 @@ const getEventById = async (req, res) => {
 /**
  * @desc    Create new event
  * @route   POST /api/events
- * @access  Private/Admin
+ * @access  Private/Admin or Approved Organizer
  */
 const createEvent = async (req, res) => {
   try {
@@ -161,7 +162,7 @@ const createEvent = async (req, res) => {
       });
     }
 
-    // Create event
+    // Create event with organizerId set to current user
     const event = await Event.create({
       title,
       description,
@@ -171,6 +172,7 @@ const createEvent = async (req, res) => {
       totalTickets,
       organizerName,
       organizerContact,
+      organizerId: req.user.id, // Auto-set from authenticated user
     });
 
     res.status(201).json({
@@ -362,7 +364,7 @@ const deleteEvent = async (req, res) => {
 /**
  * @desc    Get event analytics/statistics
  * @route   GET /api/events/:id/analytics
- * @access  Private/Admin
+ * @access  Private/Admin or Event Owner
  */
 const getEventAnalytics = async (req, res) => {
   try {
@@ -459,6 +461,73 @@ const getEventAnalytics = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get organizer's own events
+ * @route   GET /api/events/my-events
+ * @access  Private/Approved Organizer
+ */
+const getMyEvents = async (req, res) => {
+  try {
+    const { status, upcoming, page = 1, limit = 10 } = req.query;
+
+    // Build query - filter by current user's organizerId
+    const query = { organizerId: req.user.id };
+
+    // Filter by status
+    if (status) {
+      query.status = status;
+    }
+
+    // Filter upcoming events
+    if (upcoming === "true") {
+      query.date = { $gte: new Date() };
+    }
+
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Execute query
+    const events = await Event.find(query)
+      .sort({ date: 1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Get total count for pagination
+    const total = await Event.countDocuments(query);
+
+    // Get aggregate stats for organizer's events
+    const stats = await Event.aggregate([
+      { $match: { organizerId: mongoose.Types.ObjectId(req.user.id) } },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+          totalTicketsSold: { $sum: "$ticketsSold" },
+          totalRevenue: { $sum: { $multiply: ["$ticketsSold", "$ticketPrice"] } },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: events.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)),
+      stats: stats,
+      data: events,
+    });
+  } catch (error) {
+    console.error("Error fetching my events:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch your events",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllEvents,
   getEventById,
@@ -466,4 +535,5 @@ module.exports = {
   updateEvent,
   deleteEvent,
   getEventAnalytics,
+  getMyEvents,
 };

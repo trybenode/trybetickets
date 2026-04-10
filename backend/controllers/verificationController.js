@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 /**
  * @desc    Verify ticket by QR token (check-in)
  * @route   POST /api/verify
- * @access  Private/Admin (Scanner)
+ * @access  Private/Admin or Event Owner
  */
 const verifyTicket = async (req, res) => {
   try {
@@ -27,6 +27,18 @@ const verifyTicket = async (req, res) => {
         success: false,
         valid: false,
         message: "Invalid ticket - not found in system",
+      });
+    }
+
+    // Check ownership - only event owner or admin can scan
+    const isAdmin = req.user.role === "admin";
+    const isEventOwner = ticket.eventId.organizerId.toString() === req.user.id.toString();
+    
+    if (!isAdmin && !isEventOwner) {
+      return res.status(403).json({
+        success: false,
+        valid: false,
+        message: "You do not have permission to verify tickets for this event",
       });
     }
 
@@ -186,7 +198,7 @@ const checkTicketStatus = async (req, res) => {
 /**
  * @desc    Manually mark ticket as used (admin override)
  * @route   PATCH /api/verify/checkin/:ticketId
- * @access  Private/Admin
+ * @access  Private/Admin or Event Owner
  */
 const manualCheckIn = async (req, res) => {
   try {
@@ -201,12 +213,23 @@ const manualCheckIn = async (req, res) => {
       });
     }
 
-    const ticket = await Ticket.findById(ticketId);
+    const ticket = await Ticket.findById(ticketId).populate("eventId");
 
     if (!ticket) {
       return res.status(404).json({
         success: false,
         message: "Ticket not found",
+      });
+    }
+
+    // Check ownership - only event owner or admin can manually check in
+    const isAdmin = req.user.role === "admin";
+    const isEventOwner = ticket.eventId.organizerId.toString() === req.user.id.toString();
+    
+    if (!isAdmin && !isEventOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to manage tickets for this event",
       });
     }
 
