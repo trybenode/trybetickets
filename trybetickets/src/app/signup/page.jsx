@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 export default function SignupPage() {
+  const router = useRouter();
+  const { signup, loading } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -18,15 +22,44 @@ export default function SignupPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle signup logic here
+    setError('');
+    
+    // Validation
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+      setError('Passwords do not match!');
       return;
     }
-    console.log('Signup attempted:', formData);
+    
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+    
+    if (!formData.agreeToTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      await signup(formData.email, formData.password, {
+        name: formData.fullName,
+        accountType: formData.accountType,
+      });
+      // Redirect to dashboard on successful signup
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Signup error:', error);
+      setError(error.message || 'Failed to create account. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -226,9 +259,16 @@ export default function SignupPage() {
               </label>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
             {/* Submit Button */}
-            <Button type="submit" variant="purple" size="lg" fullWidth>
-              Create Account
+            <Button type="submit" variant="purple" size="lg" fullWidth disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
 
