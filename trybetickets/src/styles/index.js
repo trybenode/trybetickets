@@ -117,10 +117,10 @@ export const getButtonStyle = (variant = 'primary', size = 'md') => {
   };
   
   const variantStyles = {
-    primary: 'bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 focus-visible:ring-brand-500',
+    primary: 'bg-brand-500 text-neutral-900 hover:bg-brand-600 active:bg-brand-700 focus-visible:ring-brand-500',
     secondary: 'bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700 focus-visible:ring-accent-500',
-    outline: 'border-2 border-brand-500 text-brand-500 hover:bg-brand-50 active:bg-brand-100 focus-visible:ring-brand-500',
-    ghost: 'text-brand-500 hover:bg-brand-50 active:bg-brand-100 focus-visible:ring-brand-500',
+    outline: 'border-2 border-brand-500 text-brand-700 hover:bg-brand-50 active:bg-brand-100 focus-visible:ring-brand-500',
+    ghost: 'text-brand-700 hover:bg-brand-50 active:bg-brand-100 focus-visible:ring-brand-500',
     danger: 'bg-error-500 text-white hover:bg-error-600 active:bg-error-700 focus-visible:ring-error-500',
   };
   
