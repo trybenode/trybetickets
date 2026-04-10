@@ -170,6 +170,68 @@ const getUserTickets = async (req, res) => {
 };
 
 /**
+ * @desc    Get specific user's tickets (Admin only)
+ * @route   GET /api/users/:id/tickets
+ * @access  Private/Admin
+ */
+const getUserTicketsByUserId = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+      });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Get all tickets for this user (including guest purchases with same email)
+    const tickets = await user.getTickets();
+
+    // Separate into upcoming and past
+    const now = new Date();
+    const upcoming = tickets.filter(
+      (ticket) => ticket.eventId && new Date(ticket.eventId.date) >= now
+    );
+    const past = tickets.filter(
+      (ticket) => ticket.eventId && new Date(ticket.eventId.date) < now
+    );
+
+    res.status(200).json({
+      success: true,
+      count: tickets.length,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+      },
+      data: {
+        all: tickets,
+        upcoming,
+        past,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user tickets:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user tickets",
+      error: error.message,
+    });
+  }
+};
+
+/**
  * @desc    Get user's upcoming events
  * @route   GET /api/users/events/upcoming
  * @access  Private
@@ -455,6 +517,7 @@ module.exports = {
   getUserProfile,
   updateUserProfile,
   getUserTickets,
+  getUserTicketsByUserId,
   getUserUpcomingEvents,
   createOrGetUserFromFirebase,
   getUserById,
