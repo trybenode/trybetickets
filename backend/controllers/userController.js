@@ -280,7 +280,7 @@ const getUserUpcomingEvents = async (req, res) => {
  */
 const createOrGetUserFromFirebase = async (req, res) => {
   try {
-    const { firebaseUID, email, name, phoneNumber, photoURL, emailVerified } =
+    const { firebaseUID, email, name, phoneNumber, photoURL, emailVerified, role } =
       req.body;
 
     if (!firebaseUID || !email) {
@@ -290,22 +290,42 @@ const createOrGetUserFromFirebase = async (req, res) => {
       });
     }
 
-    // Use the static method to create/get user
-    const user = await User.createFromFirebase(firebaseUID, {
-      email,
-      name,
-      displayName: name,
-      phoneNumber,
-      photoURL,
-      emailVerified,
+    // Check if user already exists
+    let user = await User.findOne({
+      $or: [{ firebaseUID }, { email }],
     });
 
-    // Update last login
-    await user.updateLastLogin();
+    if (user) {
+      // Update firebaseUID if not set
+      if (!user.firebaseUID) {
+        user.firebaseUID = firebaseUID;
+        await user.save();
+      }
+      
+      // Update last login
+      await user.updateLastLogin();
+      
+      return res.status(200).json({
+        success: true,
+        message: "User logged in",
+        data: user,
+      });
+    }
 
-    res.status(200).json({
+    // Create new user
+    user = await User.create({
+      firebaseUID,
+      email,
+      name: name || email.split('@')[0],
+      phone: phoneNumber || null,
+      isEmailVerified: emailVerified || false,
+      avatar: photoURL || null,
+      role: role || 'user', // Handle role from signup
+    });
+
+    res.status(201).json({
       success: true,
-      message: user.isNew ? "User created successfully" : "User logged in",
+      message: "User created successfully",
       data: user,
     });
   } catch (error) {
