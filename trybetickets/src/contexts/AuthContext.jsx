@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
         try {
           const idToken = await firebaseUser.getIdToken();
           
-          // Fetch user data from backend
+          // Fetch user data from backend (authenticate middleware auto-creates user if needed)
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
             headers: {
               'Authorization': `Bearer ${idToken}`
@@ -62,26 +62,14 @@ export function AuthProvider({ children }) {
           
           if (response.ok) {
             const userData = await response.json();
-            setUser({
-              ...userData.data,
-              firebaseUser,
-            });
+            setUser(userData.data);
           } else {
-            // If backend doesn't have user, set basic Firebase data
-            setUser({
-              email: firebaseUser.email,
-              uid: firebaseUser.uid,
-              firebaseUser,
-            });
+            console.error('Failed to fetch user profile:', await response.text());
+            setUser(null);
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
-          // Set basic Firebase data on error
-          setUser({
-            email: firebaseUser.email,
-            uid: firebaseUser.uid,
-            firebaseUser,
-          });
+          setUser(null);
         }
       } else {
         // User is signed out
@@ -97,46 +85,40 @@ export function AuthProvider({ children }) {
   // Login with Firebase
   const login = async (email, password) => {
     try {
+      // Sign in with Firebase
       const credential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await credential.user.getIdToken();
       
-      // Sync with backend
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/auth`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          firebaseUid: credential.user.uid,
-          email: credential.user.email,
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to sync with backend');
-      }
-      
-      const userData = await response.json();
-      setUser({
-        ...userData.data,
-        firebaseUser: credential.user,
-      });
+      // User state will be updated by onAuthStateChanged listener
+      // No need to manually fetch - the listener handles it
       
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
+      
+      // Provide user-friendly error messages
+      let message = 'Failed to sign in. Please try again.';
+      if (error.code === 'auth/invalid-credential') {
+        message = 'Invalid email or password.';
+      } else if (error.code === 'auth/user-not-found') {
+        message = 'No account found with this email.';
+      } else if (error.code === 'auth/wrong-password') {
+        message = 'Incorrect password.';
+      } else if (error.code === 'auth/too-many-requests') {
+        message = 'Too many failed attempts. Please try again later.';
+      }
+      
+      throw new Error(message);
     }
   };
 
   // Signup with Firebase
   const signup = async (email, password, userData) => {
     try {
+      // Create user in Firebase
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       const idToken = await credential.user.getIdToken();
       
-      // Create user in backend
+      // Sync user data with backend (creates user in MongoDB with additional info)
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/auth`, {
         method: 'POST',
         headers: {
@@ -144,28 +126,41 @@ export function AuthProvider({ children }) {
           'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
-          firebaseUid: credential.user.uid,
+          firebaseUID: credential.user.uid, // Backend expects uppercase UID
           email: credential.user.email,
           name: userData.name,
-          phone: userData.phone,
-          role: userData.accountType || 'user',
+          phoneNumber: userData.phone || '', // Optional
+          emailVerified: credential.user.emailVerified,
+          role: userData.accountType || 'user', // 'user' or 'organizer'
         })
       });
       
       if (!response.ok) {
-        throw new Error('Failed to create user in backend');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create user in database');
       }
       
       const newUser = await response.json();
-      setUser({
-        ...newUser.data,
-        firebaseUser: credential.user,
-      });
+      console.log('User created in database:', newUser.data);
       
+      // User state will be updated by onAuthStateChanged listener
       return { success: true };
     } catch (error) {
       console.error('Signup error:', error);
-      throw error;
+      
+      // Provide user-friendly error messages
+      let message = 'Failed to create account. Please try again.';
+      if (error.code === 'auth/email-already-in-use') {
+        message = 'An account with this email already exists.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'Invalid email address.';
+      } else if (error.code === 'auth/weak-password') {
+        message = 'Password is too weak. Use at least 6 characters.';
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      throw new Error(message);
     }
   };
 
