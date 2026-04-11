@@ -25,10 +25,14 @@ if (!getApps().length) {
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
-// Initialize Analytics (only in browser)
+// Initialize Analytics (only in browser and production)
 let analytics;
-if (typeof window !== 'undefined') {
-  analytics = getAnalytics(app);
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+  try {
+    analytics = getAnalytics(app);
+  } catch (error) {
+    console.warn('Firebase Analytics could not be initialized:', error.message);
+  }
 }
 
 export { analytics };
