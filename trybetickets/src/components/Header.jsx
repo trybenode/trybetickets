@@ -1,17 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, logout } = useAuth();
   
   // Get user role from auth context
   const userRole = user?.role || 'user';
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setMobileMenuOpen(false);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -49,12 +61,17 @@ export default function Header() {
           {/* Desktop CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
-              // Authenticated: Show Dashboard button
-              <Link href={userRole === 'organizer' ? '/dashboard/organizer' : '/dashboard'}>
-                <Button variant="purple" size="sm">
-                  Dashboard
+              // Authenticated: Show Dashboard + Logout buttons
+              <>
+                <Link href={userRole === 'organizer' ? '/dashboard/organizer' : '/dashboard'}>
+                  <Button variant="ghost" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Button variant="purple" size="sm" onClick={handleLogout}>
+                  Logout
                 </Button>
-              </Link>
+              </>
             ) : (
               // Not authenticated: Show Sign In + Get Started
               <>
@@ -104,12 +121,17 @@ export default function Header() {
             </Link>
             <div className="pt-3 space-y-2">
               {isAuthenticated ? (
-                // Authenticated: Show Dashboard button
-                <Link href={userRole === 'organizer' ? '/dashboard/organizer' : '/dashboard'}>
-                  <Button variant="purple" size="sm" fullWidth>
-                    Dashboard
+                // Authenticated: Show Dashboard + Logout buttons
+                <>
+                  <Link href={userRole === 'organizer' ? '/dashboard/organizer' : '/dashboard'}>
+                    <Button variant="ghost" size="sm" fullWidth>
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button variant="purple" size="sm" fullWidth onClick={handleLogout}>
+                    Logout
                   </Button>
-                </Link>
+                </>
               ) : (
                 // Not authenticated: Show Sign In + Get Started
                 <>
