@@ -26,6 +26,7 @@ export default function Header() {
               height={40}
               style={{ height: 'auto', width: 'auto', maxHeight: '7rem'  }}
               priority
+              loading="eager"
             />
           </Link>
 

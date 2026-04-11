@@ -18,6 +18,7 @@ export default function Footer() {
                 height={20}
                 style={{ height: 'auto', width: 'auto' }}
                 // className="h-"
+                loading="eager"
               />
             </div>
             <p className="text-white/80 text-sm leading-relaxed">
