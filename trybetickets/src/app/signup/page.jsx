@@ -48,12 +48,17 @@ export default function SignupPage() {
     setIsSubmitting(true);
     
     try {
-      await signup(formData.email, formData.password, {
+      const result = await signup(formData.email, formData.password, {
         name: formData.fullName,
         accountType: formData.accountType,
       });
-      // Redirect to dashboard on successful signup
-      router.push('/dashboard');
+      
+      // Redirect to appropriate dashboard based on user role
+      if (result.user?.role === 'organizer') {
+        router.push('/dashboard/organizer');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error) {
       console.error('Signup error:', error);
       setError(error.message || 'Failed to create account. Please try again.');

@@ -26,9 +26,14 @@ export default function LoginPage() {
     setIsSubmitting(true);
     
     try {
-      await login(formData.email, formData.password);
-      // Redirect to dashboard on successful login
-      router.push('/dashboard');
+      const result = await login(formData.email, formData.password);
+      
+      // Redirect to appropriate dashboard based on user role
+      if (result.role === 'organizer') {
+        router.push('/dashboard/organizer');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message || 'Failed to sign in. Please check your credentials.');

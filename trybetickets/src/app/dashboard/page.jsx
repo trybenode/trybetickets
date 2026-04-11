@@ -1,19 +1,44 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function UserDashboard() {
+  const router = useRouter();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState(null);
   const [tickets, setTickets] = useState({ upcoming: [], past: [] });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming');
 
+  // Check authentication
+  useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+        return;
+      }
+      
+      // Check if user has correct role
+      if (user?.role === 'organizer') {
+        router.push('/dashboard/organizer');
+        return;
+      }
+    }
+  }, [authLoading, isAuthenticated, user, router]);
+
   // Mock data - replace with actual API calls
   useEffect(() => {
+    // Don't fetch if still checking auth or not authenticated
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         // TODO: Replace with actual API calls
@@ -99,7 +124,7 @@ export default function UserDashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -126,7 +151,8 @@ export default function UserDashboard() {
     return colors[status] || colors.confirmed;
   };
 
-  if (loading) {
+  // Show loading while checking authentication or fetching data
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -135,6 +161,11 @@ export default function UserDashboard() {
         </div>
       </div>
     );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated || !user) {
+    return null;
   }
 
   return (

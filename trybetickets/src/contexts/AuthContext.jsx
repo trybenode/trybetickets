@@ -12,7 +12,7 @@
 
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -44,54 +44,105 @@ export const useAuth = () => {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const isFetchingRef = useRef(false); // Prevent duplicate simultaneous fetches
 
   // Initialize Firebase Auth state listener
   useEffect(() => {
+    let isMounted = true;
+    
+    // Set a timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('Auth check taking too long, continuing without user');
+        setLoading(false);
+        setInitialCheckDone(true);
+      }
+    }, 3000); // 3 second timeout
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!isMounted) return;
+      
+      // Clear the timeout since auth state changed
+      clearTimeout(loadingTimeout);
+      
       if (firebaseUser) {
-        // User is signed in
-        try {
-          const idToken = await firebaseUser.getIdToken();
+        // User is signed in - fetch profile if we don't have it or if user changed
+        // But prevent duplicate fetches if already fetching
+        const shouldFetch = !isFetchingRef.current && (!user || user.firebaseUID !== firebaseUser.uid);
+        
+        if (shouldFetch) {
+          isFetchingRef.current = true;
           
-          // Fetch user data from backend (authenticate middleware auto-creates user if needed)
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
-            headers: {
-              'Authorization': `Bearer ${idToken}`
+          try {
+            const idToken = await firebaseUser.getIdToken();
+            
+            // Fetch user data from backend
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+              headers: {
+                'Authorization': `Bearer ${idToken}`
+              }
+            });
+            
+            if (!isMounted) return;
+            
+            if (response.ok) {
+              const userData = await response.json();
+              setUser(userData.data);
+            } else {
+              console.error('Failed to fetch user profile');
+              setUser(null);
             }
-          });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData.data);
-          } else {
-            console.error('Failed to fetch user profile:', await response.text());
-            setUser(null);
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+            if (isMounted) {
+              setUser(null);
+            }
+          } finally {
+            isFetchingRef.current = false;
           }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          setUser(null);
         }
       } else {
         // User is signed out
         setUser(null);
+        isFetchingRef.current = false;
       }
-      setLoading(false);
+      
+      if (isMounted) {
+        setLoading(false);
+        setInitialCheckDone(true);
+      }
     });
 
     // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      isMounted = false;
+      clearTimeout(loadingTimeout);
+      unsubscribe();
+    };
+  }, []); // Empty deps - only run once on mount
 
   // Login with Firebase
   const login = async (email, password) => {
     try {
       // Sign in with Firebase
       const credential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await credential.user.getIdToken();
       
-      // User state will be updated by onAuthStateChanged listener
-      // No need to manually fetch - the listener handles it
+      // Fetch user profile to get role for immediate redirect
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
       
-      return { success: true };
+      let userRole = 'user'; // Default
+      if (response.ok) {
+        const userData = await response.json();
+        userRole = userData.data?.role || 'user';
+      }
+      
+      return { success: true, role: userRole };
     } catch (error) {
       console.error('Login error:', error);
       
@@ -143,8 +194,11 @@ export function AuthProvider({ children }) {
       const newUser = await response.json();
       console.log('User created in database:', newUser.data);
       
-      // User state will be updated by onAuthStateChanged listener
-      return { success: true };
+      // Return user data including role for immediate use
+      return { 
+        success: true, 
+        user: newUser.data 
+      };
     } catch (error) {
       console.error('Signup error:', error);
       

@@ -1,17 +1,42 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function OrganizerDashboard() {
+  const router = useRouter();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Check authentication
+  useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+        return;
+      }
+      
+      // Check if user has correct role
+      if (user?.role !== 'organizer') {
+        router.push('/dashboard');
+        return;
+      }
+    }
+  }, [authLoading, isAuthenticated, user, router]);
+
   // Mock data - replace with actual API calls
   useEffect(() => {
+    // Don't fetch if still checking auth or not authenticated
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         // TODO: Replace with actual API call
@@ -108,7 +133,7 @@ export default function OrganizerDashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -132,7 +157,8 @@ export default function OrganizerDashboard() {
     return ((sold / total) * 100).toFixed(0);
   };
 
-  if (loading) {
+  // Show loading while checking authentication or fetching data
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -141,6 +167,11 @@ export default function OrganizerDashboard() {
         </div>
       </div>
     );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated || !user) {
+    return null;
   }
 
   return (

@@ -2,7 +2,7 @@ import { Roboto, Nunito_Sans} from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { AuthProvider } from "@/contexts/AuthContext";
+import Providers from "@/components/Providers";
 
 const roboto = Roboto({
   weight: ['400', '500', '600', '700'],
@@ -17,8 +17,8 @@ const nunitoSans = Nunito_Sans({
 });
 
 export const metadata = {
-  title: "TrybeTickets - Premier Event Ticketing Platform",
-  description: "Create, manage, and attend amazing events with TrybeTickets.",
+  title: "TrybeTickets - Your Ultimate Event Platform",
+  description: "Discover and book tickets for amazing events",
 };
 
 export default function RootLayout({ children }) {
@@ -28,13 +28,13 @@ export default function RootLayout({ children }) {
       className={`${roboto.variable} ${nunitoSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider>
+        <Providers>
           <Header />
           <main className="flex-1">
             {children}
           </main>
           <Footer />
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
