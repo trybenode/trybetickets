@@ -269,11 +269,10 @@ userSchema.statics.suspendOrganizer = async function (organizerId) {
 };
 
 // Pre-save hook - Prevent email changes after verification
-userSchema.pre("save", function (next) {
+userSchema.pre("save", async function () {
   if (this.isModified("email") && this.isEmailVerified && !this.isNew) {
-    return next(new Error("Cannot change verified email address"));
+    throw new Error("Cannot change verified email address");
   }
-  next();
 });
 
 // Ensure sensitive data is not exposed in JSON
