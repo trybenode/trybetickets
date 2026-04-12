@@ -264,13 +264,16 @@ const updateEvent = async (req, res) => {
     const allowedUpdates = [
       "title",
       "description",
+      "category",
       "date",
       "venue",
+      "eventCapacity",
       "ticketPrice",
       "totalTickets",
       "status",
       "organizerName",
       "organizerContact",
+      "ticketTypesData",
     ];
 
     // Validate updates
@@ -294,6 +297,23 @@ const updateEvent = async (req, res) => {
       });
     }
 
+    // Check if event capacity is less than total tickets
+    if (req.body.eventCapacity && req.body.totalTickets) {
+      if (req.body.totalTickets > req.body.eventCapacity) {
+        return res.status(400).json({
+          success: false,
+          message: "Total tickets cannot exceed event capacity",
+        });
+      }
+    } else if (req.body.eventCapacity && !req.body.totalTickets) {
+      if (event.totalTickets > req.body.eventCapacity) {
+        return res.status(400).json({
+          success: false,
+          message: `Event capacity cannot be less than total tickets (${event.totalTickets})`,
+        });
+      }
+    }
+
     // Validate date if updating
     if (req.body.date) {
       const newDate = new Date(req.body.date);
@@ -306,9 +326,24 @@ const updateEvent = async (req, res) => {
       req.body.date = newDate;
     }
 
+    // Handle ticket types update
+    if (req.body.ticketTypesData && Array.isArray(req.body.ticketTypesData)) {
+      // Map ticket types data to ticketTypes schema
+      event.ticketTypes = req.body.ticketTypesData.map(ticketType => ({
+        name: ticketType.name,
+        price: ticketType.price,
+        quantity: ticketType.quantity,
+        sold: ticketType.sold || 0
+      }));
+      // Don't include ticketTypesData in regular updates
+      delete req.body.ticketTypesData;
+    }
+
     // Apply updates
     updates.forEach((update) => {
-      event[update] = req.body[update];
+      if (update !== 'ticketTypesData') {
+        event[update] = req.body[update];
+      }
     });
 
     await event.save();
