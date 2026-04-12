@@ -333,12 +333,12 @@ export default function CreateEventPage() {
               </p>
             </div>
             <Link href="/dashboard/organizer/events">
-              <Button variant="outline" size="md">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button className="px-5 py-2.5 bg-white text-[#605B51] border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-[#a855f7] transition-all font-nunito font-semibold flex items-center gap-2 shadow-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 Cancel
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
@@ -759,15 +759,13 @@ export default function CreateEventPage() {
               )}
             </Button>
             <Link href="/dashboard/organizer/events" className="flex-1">
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="lg"
                 disabled={creating}
-                className="w-full h-14 text-base font-semibold"
+                className="w-full h-14 text-base font-semibold px-6 bg-white text-[#605B51] border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-[#a855f7] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 Cancel
-              </Button>
+              </button>
             </Link>
           </div>
         </form>

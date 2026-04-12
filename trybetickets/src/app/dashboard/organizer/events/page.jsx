@@ -219,12 +219,12 @@ export default function OrganizerEventsPage() {
               </p>
             </div>
             <Link href="/dashboard/organizer/events/create">
-              <Button variant="primary" size="lg" className="shadow-lg hover:shadow-xl transition-all">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button className="px-6 py-3 bg-gradient-to-r from-[#D8D365] to-[#a855f7] text-white font-nunito font-semibold rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Create Event
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
