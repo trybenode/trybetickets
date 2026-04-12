@@ -315,7 +315,8 @@ const getOrganizerDashboard = async (req, res) => {
     });
 
     // Get ticket sales statistics
-    const eventIds = await Event.find({ organizerId: req.user.id }).distinct("_id");
+    const events = await Event.find({ organizerId: req.user.id }).select("_id").lean();
+    const eventIds = events.map(e => e._id);
     
     const ticketStats = await Ticket.aggregate([
       { $match: { eventId: { $in: eventIds } } },
