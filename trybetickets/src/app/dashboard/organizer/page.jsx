@@ -43,19 +43,29 @@ export default function OrganizerDashboard() {
       setError(null);
       
       try {
+        // Get Firebase ID token for authentication
+        const { auth } = await import('@/lib/firebase');
+        const currentUser = auth.currentUser;
+        
+        if (!currentUser) {
+          throw new Error('No authenticated user found');
+        }
+        
+        const idToken = await currentUser.getIdToken();
+        
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizers/dashboard`, {
           method: 'GET',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
           },
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch dashboard data');
-        }
-
         const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Failed to fetch dashboard data');
+        }
         
         if (result.success) {
           setDashboardData(result.data);
@@ -245,11 +255,21 @@ export default function OrganizerDashboard() {
           </div>
 
           <div className="space-y-4">
-            {dashboardData?.recentEvents.map((event) => (
-              <div
-                key={event._id}
-                className="border-2 border-gray-200 rounded-lg p-5 hover:border-[#a855f7] transition-all"
-              >
+            {!dashboardData?.recentEvents || dashboardData.recentEvents.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <div className="text-6xl mb-4">🎫</div>
+                <h3 className="text-xl font-semibold text-[#2d2a28] mb-2">No Events Yet</h3>
+                <p className="text-[#605B51] mb-6">Create your first event to get started!</p>
+                <Link href="/dashboard/organizer/events/create">
+                  <Button variant="primary">Create Event</Button>
+                </Link>
+              </div>
+            ) : (
+              dashboardData.recentEvents.map((event) => (
+                <div
+                  key={event._id}
+                  className="border-2 border-gray-200 rounded-lg p-5 hover:border-[#a855f7] transition-all"
+                >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -317,7 +337,8 @@ export default function OrganizerDashboard() {
                   </div>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </Card>
       </div>
