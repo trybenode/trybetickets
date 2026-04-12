@@ -86,7 +86,7 @@ const getEventById = async (req, res) => {
 
     // Get ticket statistics for this event
     const ticketStats = await Ticket.aggregate([
-      { $match: { eventId: mongoose.Types.ObjectId(id) } },
+      { $match: { eventId: new mongoose.Types.ObjectId(id) } },
       {
         $group: {
           _id: "$status",
@@ -389,7 +389,7 @@ const getEventAnalytics = async (req, res) => {
 
     // Get detailed ticket statistics
     const ticketStats = await Ticket.aggregate([
-      { $match: { eventId: mongoose.Types.ObjectId(id) } },
+      { $match: { eventId: new mongoose.Types.ObjectId(id) } },
       {
         $group: {
           _id: "$status",
@@ -498,7 +498,7 @@ const getMyEvents = async (req, res) => {
 
     // Get aggregate stats for organizer's events
     const stats = await Event.aggregate([
-      { $match: { organizerId: mongoose.Types.ObjectId(req.user.id) } },
+      { $match: { organizerId: new mongoose.Types.ObjectId(req.user.id) } },
       {
         $group: {
           _id: "$status",
