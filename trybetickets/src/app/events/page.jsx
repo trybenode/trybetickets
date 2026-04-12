@@ -308,7 +308,7 @@ export default function EventsPage() {
 
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                         <span className="font-roboto font-semibold text-[#a855f7] text-lg">
-                          {event.ticketPrice === 0 ? 'Free' : `From $${event.ticketPrice}`}
+                          {event.ticketPrice === 0 ? 'Free' : `From ₦${event.ticketPrice.toLocaleString()}`}
                         </span>
                         <span className="text-sm font-medium text-[#605B51] group-hover:text-[#a855f7] transition-colors">
                           View Details →
@@ -476,7 +476,7 @@ export default function EventsPage() {
 
                           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                             <span className="font-roboto font-semibold text-[#a855f7]">
-                              {event.ticketPrice === 0 ? 'Free' : `From $${event.ticketPrice}`}
+                              {event.ticketPrice === 0 ? 'Free' : `From ₦${event.ticketPrice.toLocaleString()}`}
                             </span>
                             <span className="text-xs font-medium text-[#605B51] group-hover:text-[#a855f7] transition-colors">
                               Details →
