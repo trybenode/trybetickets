@@ -296,6 +296,40 @@ const createOrGetUserFromFirebase = async (req, res) => {
     });
 
     if (user) {
+      // Update firebaseUID if not set (user may have been pre-created)
+      if (!user.firebaseUID) {
+        user.firebaseUID = firebaseUID;
+        await user.save();
+      }
+      
+      // Update last login
+      await user.updateLastLogin();
+      
+      return res.status(200).json({
+        success: true,
+        message: "User logged in",
+        data: user,
+      });
+    }
+
+    // Create new user
+    user = await User.create({
+      firebaseUID,
+      email,
+      name: name || email.split('@')[0],
+      phone: phoneNumber || null,
+      isEmailVerified: emailVerified || false,
+      avatar: photoURL || null,
+      role: role || 'user', // Default to 'user', can be 'organizer'
+    });
+
+    res.status(201).json({
+    // Check if user already exists
+    let user = await User.findOne({
+      $or: [{ firebaseUID }, { email }],
+    });
+
+    if (user) {
       // Update firebaseUID if not set
       if (!user.firebaseUID) {
         user.firebaseUID = firebaseUID;
@@ -325,6 +359,7 @@ const createOrGetUserFromFirebase = async (req, res) => {
 
     res.status(201).json({
       success: true,
+      message: "User created successfully",
       message: "User created successfully",
       data: user,
     });

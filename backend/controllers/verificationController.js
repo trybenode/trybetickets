@@ -287,7 +287,7 @@ const getVerificationStats = async (req, res) => {
     }
 
     const stats = await Ticket.aggregate([
-      { $match: { eventId: mongoose.Types.ObjectId(eventId) } },
+      { $match: { eventId: new mongoose.Types.ObjectId(eventId) } },
       {
         $group: {
           _id: "$status",

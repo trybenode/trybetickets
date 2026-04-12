@@ -134,7 +134,7 @@ ticketSchema.statics.verifyByQRToken = async function (qrToken) {
 // Static method to get event statistics
 ticketSchema.statics.getEventStats = async function (eventId) {
   const stats = await this.aggregate([
-    { $match: { eventId: mongoose.Types.ObjectId(eventId) } },
+    { $match: { eventId: new mongoose.Types.ObjectId(eventId) } },
     {
       $group: {
         _id: "$status",

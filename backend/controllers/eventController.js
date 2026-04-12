@@ -86,7 +86,7 @@ const getEventById = async (req, res) => {
 
     // Get ticket statistics for this event
     const ticketStats = await Ticket.aggregate([
-      { $match: { eventId: mongoose.Types.ObjectId(id) } },
+      { $match: { eventId: new mongoose.Types.ObjectId(id) } },
       {
         $group: {
           _id: "$status",
@@ -129,12 +129,15 @@ const createEvent = async (req, res) => {
     const {
       title,
       description,
+      category,
       date,
       venue,
+      eventCapacity,
       ticketPrice,
       totalTickets,
       organizerName,
       organizerContact,
+      ticketTypesData, // Array of ticket types from frontend
     } = req.body;
 
     // Validate required fields
@@ -162,8 +165,16 @@ const createEvent = async (req, res) => {
       });
     }
 
-    // Create event with organizerId set to current user
-    const event = await Event.create({
+    // Validate eventCapacity vs totalTickets if eventCapacity is provided
+    if (eventCapacity && totalTickets > eventCapacity) {
+      return res.status(400).json({
+        success: false,
+        message: "Total tickets cannot exceed event capacity",
+      });
+    }
+
+    // Prepare event data
+    const eventData = {
       title,
       description,
       date: eventDate,
@@ -173,7 +184,29 @@ const createEvent = async (req, res) => {
       organizerName,
       organizerContact,
       organizerId: req.user.id, // Auto-set from authenticated user
-    });
+    };
+
+    // Add optional fields if provided
+    if (category) {
+      eventData.category = category;
+    }
+
+    if (eventCapacity) {
+      eventData.eventCapacity = eventCapacity;
+    }
+
+    // Process ticket types if provided
+    if (ticketTypesData && Array.isArray(ticketTypesData) && ticketTypesData.length > 0) {
+      eventData.ticketTypes = ticketTypesData.map(ticket => ({
+        name: ticket.name,
+        price: ticket.price,
+        quantity: ticket.quantity,
+        sold: 0, // Initialize sold count to 0
+      }));
+    }
+
+    // Create event
+    const event = await Event.create(eventData);
 
     res.status(201).json({
       success: true,
@@ -231,13 +264,16 @@ const updateEvent = async (req, res) => {
     const allowedUpdates = [
       "title",
       "description",
+      "category",
       "date",
       "venue",
+      "eventCapacity",
       "ticketPrice",
       "totalTickets",
       "status",
       "organizerName",
       "organizerContact",
+      "ticketTypesData",
     ];
 
     // Validate updates
@@ -261,6 +297,23 @@ const updateEvent = async (req, res) => {
       });
     }
 
+    // Check if event capacity is less than total tickets
+    if (req.body.eventCapacity && req.body.totalTickets) {
+      if (req.body.totalTickets > req.body.eventCapacity) {
+        return res.status(400).json({
+          success: false,
+          message: "Total tickets cannot exceed event capacity",
+        });
+      }
+    } else if (req.body.eventCapacity && !req.body.totalTickets) {
+      if (event.totalTickets > req.body.eventCapacity) {
+        return res.status(400).json({
+          success: false,
+          message: `Event capacity cannot be less than total tickets (${event.totalTickets})`,
+        });
+      }
+    }
+
     // Validate date if updating
     if (req.body.date) {
       const newDate = new Date(req.body.date);
@@ -273,9 +326,24 @@ const updateEvent = async (req, res) => {
       req.body.date = newDate;
     }
 
+    // Handle ticket types update
+    if (req.body.ticketTypesData && Array.isArray(req.body.ticketTypesData)) {
+      // Map ticket types data to ticketTypes schema
+      event.ticketTypes = req.body.ticketTypesData.map(ticketType => ({
+        name: ticketType.name,
+        price: ticketType.price,
+        quantity: ticketType.quantity,
+        sold: ticketType.sold || 0
+      }));
+      // Don't include ticketTypesData in regular updates
+      delete req.body.ticketTypesData;
+    }
+
     // Apply updates
     updates.forEach((update) => {
-      event[update] = req.body[update];
+      if (update !== 'ticketTypesData') {
+        event[update] = req.body[update];
+      }
     });
 
     await event.save();
@@ -389,7 +457,7 @@ const getEventAnalytics = async (req, res) => {
 
     // Get detailed ticket statistics
     const ticketStats = await Ticket.aggregate([
-      { $match: { eventId: mongoose.Types.ObjectId(id) } },
+      { $match: { eventId: new mongoose.Types.ObjectId(id) } },
       {
         $group: {
           _id: "$status",
@@ -498,7 +566,7 @@ const getMyEvents = async (req, res) => {
 
     // Get aggregate stats for organizer's events
     const stats = await Event.aggregate([
-      { $match: { organizerId: mongoose.Types.ObjectId(req.user.id) } },
+      { $match: { organizerId: new mongoose.Types.ObjectId(req.user.id) } },
       {
         $group: {
           _id: "$status",

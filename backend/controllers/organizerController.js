@@ -314,25 +314,30 @@ const getOrganizerDashboard = async (req, res) => {
       status: "cancelled",
     });
 
-    // Get ticket sales statistics
-    const eventIds = await Event.find({ organizerId: req.user.id }).distinct("_id");
+    // Get ticket sales statistics from Event model
+    const allEvents = await Event.find({ organizerId: req.user.id })
+      .select("ticketsSold ticketPrice")
+      .lean();
     
+    // Calculate total tickets sold and revenue from Event model
+    const totalTicketsSold = allEvents.reduce((sum, event) => sum + (event.ticketsSold || 0), 0);
+    const totalRevenue = allEvents.reduce(
+      (sum, event) => sum + ((event.ticketsSold || 0) * (event.ticketPrice || 0)),
+      0
+    );
+    
+    // Also check Ticket collection for check-in data (if tickets are managed separately)
+    const eventIds = allEvents.map(e => e._id);
     const ticketStats = await Ticket.aggregate([
       { $match: { eventId: { $in: eventIds } } },
       {
         $group: {
           _id: "$status",
           count: { $sum: 1 },
-          totalRevenue: { $sum: "$amountPaid" },
         },
       },
     ]);
-
-    const totalTicketsSold = ticketStats.reduce((sum, stat) => sum + stat.count, 0);
-    const totalRevenue = ticketStats.reduce(
-      (sum, stat) => sum + (stat.totalRevenue || 0),
-      0
-    );
+    
     const checkedInTickets = ticketStats.find((s) => s._id === "used")?.count || 0;
 
     // Get recent events

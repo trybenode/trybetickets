@@ -106,6 +106,7 @@ const authenticate = async (req, res, next) => {
       name: user.name,
       role: user.role,
       firebaseUID: user.firebaseUID,
+      organizerProfile: user.organizerProfile, // Include organizer profile for authorization checks
     };
 
     next();
