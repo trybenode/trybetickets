@@ -368,7 +368,7 @@ export default function EventDetailsPage({ params }) {
                                 General Admission
                               </h4>
                               <p className="text-2xl font-bold text-[#a855f7] mt-1">
-                                {event.ticketPrice === 0 ? 'Free' : `$${event.ticketPrice}`}
+                                {event.ticketPrice === 0 ? 'Free' : `₦${event.ticketPrice.toLocaleString()}`}
                               </p>
                             </div>
                             <input
@@ -431,7 +431,7 @@ export default function EventDetailsPage({ params }) {
                         <div className="flex items-center justify-between mb-4">
                           <span className="text-[#605B51]">Total</span>
                           <span className="text-3xl font-bold text-[#2d2a28]">
-                            {event.ticketPrice === 0 ? 'Free' : `$${totalPrice.toFixed(2)}`}
+                            {event.ticketPrice === 0 ? 'Free' : `₦${totalPrice.toLocaleString()}`}
                           </span>
                         </div>
                         <Button variant="primary" fullWidth size="lg">
