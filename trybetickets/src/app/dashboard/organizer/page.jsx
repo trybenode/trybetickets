@@ -13,6 +13,7 @@ export default function OrganizerDashboard() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Check authentication
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function OrganizerDashboard() {
     }
   }, [authLoading, isAuthenticated, user, router]);
 
-  // Mock data - replace with actual API calls
+  // Fetch dashboard data from API
   useEffect(() => {
     // Don't fetch if still checking auth or not authenticated
     if (authLoading || !isAuthenticated) {
@@ -38,96 +39,33 @@ export default function OrganizerDashboard() {
     }
 
     const fetchDashboardData = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/organizers/dashboard', { credentials: 'include' });
-        // const data = await response.json();
-        
-        // Mock data matching backend response structure
-        const mockData = {
-          profile: {
-            id: '1',
-            email: 'organizer@example.com',
-            role: 'organizer',
-            organizerProfile: {
-              companyName: 'Live Nation Events',
-              description: 'Professional event management company specializing in music festivals and concerts.',
-              website: 'https://livenation.com',
-              logo: null,
-              status: 'approved',
-              approvedAt: '2026-01-10T00:00:00Z',
-            },
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizers/dashboard`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          stats: {
-            events: {
-              total: 12,
-              active: 5,
-              completed: 6,
-              cancelled: 1,
-            },
-            tickets: {
-              totalSold: 2847,
-              checkedIn: 1923,
-              checkInRate: '67.55%',
-            },
-            revenue: {
-              total: 142350,
-              currency: 'USD',
-            },
-          },
-          recentEvents: [
-            {
-              _id: 'event1',
-              title: 'Summer Music Festival 2026',
-              date: '2026-06-15T18:00:00Z',
-              status: 'active',
-              ticketsSold: 850,
-              totalTickets: 1000,
-              ticketPrice: 45,
-            },
-            {
-              _id: 'event2',
-              title: 'Tech Innovation Summit',
-              date: '2026-05-20T09:00:00Z',
-              status: 'active',
-              ticketsSold: 450,
-              totalTickets: 500,
-              ticketPrice: 199,
-            },
-            {
-              _id: 'event3',
-              title: 'Jazz Night Under Stars',
-              date: '2026-05-15T19:30:00Z',
-              status: 'active',
-              ticketsSold: 120,
-              totalTickets: 200,
-              ticketPrice: 30,
-            },
-            {
-              _id: 'event4',
-              title: 'Food & Wine Expo',
-              date: '2026-04-25T12:00:00Z',
-              status: 'completed',
-              ticketsSold: 680,
-              totalTickets: 700,
-              ticketPrice: 35,
-            },
-            {
-              _id: 'event5',
-              title: 'New Year Gala 2026',
-              date: '2026-01-01T20:00:00Z',
-              status: 'completed',
-              ticketsSold: 300,
-              totalTickets: 300,
-              ticketPrice: 350,
-            },
-          ],
-        };
+        });
 
-        setDashboardData(mockData);
-        setLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+          setDashboardData(result.data);
+        } else {
+          throw new Error(result.message || 'Failed to load dashboard');
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+        setError(err.message);
+      } finally {
         setLoading(false);
       }
     };
@@ -164,6 +102,22 @@ export default function OrganizerDashboard() {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#a855f7] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#605B51]">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-[#2d2a28] mb-2">Failed to Load Dashboard</h2>
+          <p className="text-[#605B51] mb-6">{error}</p>
+          <Button variant="purple" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -254,9 +208,9 @@ export default function OrganizerDashboard() {
             </div>
             <h3 className="text-sm font-nunito text-[#605B51] mb-1">Total Revenue</h3>
             <p className="text-3xl font-bold text-[#2d2a28]">
-              ${dashboardData?.stats.revenue.total.toLocaleString()}
+              ₦{dashboardData?.stats.revenue.total.toLocaleString()}
             </p>
-            <p className="text-xs text-[#605B51] mt-3">{dashboardData?.stats.revenue.currency}</p>
+            <p className="text-xs text-[#605B51] mt-3">Nigerian Naira (NGN)</p>
           </Card>
 
           {/* Company Profile */}
@@ -332,12 +286,12 @@ export default function OrganizerDashboard() {
                       <div>
                         <span className="text-[#605B51]">Revenue: </span>
                         <span className="font-semibold text-[#2d2a28]">
-                          ${(event.ticketsSold * event.ticketPrice).toLocaleString()}
+                          ₦{(event.ticketsSold * event.ticketPrice).toLocaleString()}
                         </span>
                       </div>
                       <div>
                         <span className="text-[#605B51]">Price: </span>
-                        <span className="font-semibold text-[#2d2a28]">${event.ticketPrice}</span>
+                        <span className="font-semibold text-[#2d2a28]">₦{event.ticketPrice.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
