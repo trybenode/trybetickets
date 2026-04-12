@@ -129,12 +129,15 @@ const createEvent = async (req, res) => {
     const {
       title,
       description,
+      category,
       date,
       venue,
+      eventCapacity,
       ticketPrice,
       totalTickets,
       organizerName,
       organizerContact,
+      ticketTypesData, // Array of ticket types from frontend
     } = req.body;
 
     // Validate required fields
@@ -162,8 +165,16 @@ const createEvent = async (req, res) => {
       });
     }
 
-    // Create event with organizerId set to current user
-    const event = await Event.create({
+    // Validate eventCapacity vs totalTickets if eventCapacity is provided
+    if (eventCapacity && totalTickets > eventCapacity) {
+      return res.status(400).json({
+        success: false,
+        message: "Total tickets cannot exceed event capacity",
+      });
+    }
+
+    // Prepare event data
+    const eventData = {
       title,
       description,
       date: eventDate,
@@ -173,7 +184,29 @@ const createEvent = async (req, res) => {
       organizerName,
       organizerContact,
       organizerId: req.user.id, // Auto-set from authenticated user
-    });
+    };
+
+    // Add optional fields if provided
+    if (category) {
+      eventData.category = category;
+    }
+
+    if (eventCapacity) {
+      eventData.eventCapacity = eventCapacity;
+    }
+
+    // Process ticket types if provided
+    if (ticketTypesData && Array.isArray(ticketTypesData) && ticketTypesData.length > 0) {
+      eventData.ticketTypes = ticketTypesData.map(ticket => ({
+        name: ticket.name,
+        price: ticket.price,
+        quantity: ticket.quantity,
+        sold: 0, // Initialize sold count to 0
+      }));
+    }
+
+    // Create event
+    const event = await Event.create(eventData);
 
     res.status(201).json({
       success: true,

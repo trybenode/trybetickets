@@ -14,6 +14,27 @@ const eventSchema = new mongoose.Schema(
       trim: true,
       maxlength: [1000, "Description cannot exceed 1000 characters"],
     },
+    category: {
+      type: String,
+      trim: true,
+      enum: [
+        'Music & Concerts',
+        'Sports & Fitness',
+        'Arts & Culture',
+        'Food & Drink',
+        'Business & Professional',
+        'Technology & Innovation',
+        'Health & Wellness',
+        'Education & Career',
+        'Community & Social',
+        'Film & Media',
+        'Fashion & Beauty',
+        'Travel & Outdoor',
+        'Charity & Causes',
+        'Family & Kids',
+        'Other'
+      ],
+    },
     date: {
       type: Date,
       required: [true, "Event date is required"],
@@ -28,6 +49,10 @@ const eventSchema = new mongoose.Schema(
       type: String,
       required: [true, "Venue is required"],
       trim: true,
+    },
+    eventCapacity: {
+      type: Number,
+      min: [1, "Event capacity must be at least 1"],
     },
     organizerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -64,6 +89,30 @@ const eventSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    ticketTypes: [
+      {
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        price: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: 1,
+        },
+        sold: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

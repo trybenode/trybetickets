@@ -43,6 +43,28 @@ const validateCreateEvent = [
     .isLength({ max: 1000 })
     .withMessage("Description cannot exceed 1000 characters"),
 
+  body("category")
+    .optional()
+    .trim()
+    .isIn([
+      'Music & Concerts',
+      'Sports & Fitness',
+      'Arts & Culture',
+      'Food & Drink',
+      'Business & Professional',
+      'Technology & Innovation',
+      'Health & Wellness',
+      'Education & Career',
+      'Community & Social',
+      'Film & Media',
+      'Fashion & Beauty',
+      'Travel & Outdoor',
+      'Charity & Causes',
+      'Family & Kids',
+      'Other'
+    ])
+    .withMessage("Invalid category"),
+
   body("date")
     .notEmpty()
     .withMessage("Event date is required")
@@ -56,6 +78,11 @@ const validateCreateEvent = [
     }),
 
   body("venue").trim().notEmpty().withMessage("Venue is required"),
+
+  body("eventCapacity")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Event capacity must be at least 1"),
 
   body("ticketPrice")
     .notEmpty()
@@ -72,6 +99,27 @@ const validateCreateEvent = [
   body("organizerName").trim().notEmpty().withMessage("Organizer name is required"),
 
   body("organizerContact").optional().trim(),
+
+  body("ticketTypesData")
+    .optional()
+    .isArray()
+    .withMessage("Ticket types must be an array"),
+
+  body("ticketTypesData.*.name")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Ticket type name is required"),
+
+  body("ticketTypesData.*.price")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Ticket type price must be positive"),
+
+  body("ticketTypesData.*.quantity")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Ticket type quantity must be at least 1"),
 
   validate,
 ];
