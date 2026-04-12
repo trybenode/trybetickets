@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Button from '@/components/ui/Button';
@@ -13,103 +13,133 @@ export default function EventsPage() {
   const [selectedDate, setSelectedDate] = useState('all');
   const [priceRange, setPriceRange] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 12,
+    total: 0,
+    pages: 1
+  });
 
-  // Mock featured events data
-  const featuredEvents = [
-    {
-      id: 1,
-      title: 'Summer Music Festival 2026',
-      date: 'June 15, 2026',
-      time: '6:00 PM',
-      location: 'Central Park, New York',
-      price: 'From $45',
-      image: '/placeholder-event-1.jpg',
-      category: 'Music',
-      featured: true,
-    },
-    {
-      id: 2,
-      title: 'Tech Innovation Summit',
-      date: 'May 20, 2026',
-      time: '9:00 AM',
-      location: 'Convention Center, San Francisco',
-      price: 'From $199',
-      image: '/placeholder-event-2.jpg',
-      category: 'Technology',
-      featured: true,
-    },
-    {
-      id: 3,
-      title: 'Food & Wine Expo',
-      date: 'April 25, 2026',
-      time: '12:00 PM',
-      location: 'Downtown Plaza, Chicago',
-      price: 'From $35',
-      image: '/placeholder-event-3.jpg',
-      category: 'Food & Drink',
-      featured: true,
-    },
-  ];
+  // Fetch events from API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const params = new URLSearchParams({
+          page: pagination.page,
+          limit: pagination.limit,
+          status: 'active',
+          upcoming: 'true'
+        });
 
-  // Mock all events data
-  const allEvents = [
-    ...featuredEvents,
-    {
-      id: 4,
-      title: 'Art Gallery Opening',
-      date: 'April 18, 2026',
-      time: '7:00 PM',
-      location: 'Modern Art Museum, LA',
-      price: 'Free',
-      image: '/placeholder-event-4.jpg',
-      category: 'Arts',
-      featured: false,
-    },
-    {
-      id: 5,
-      title: 'Marathon Challenge 2026',
-      date: 'May 5, 2026',
-      time: '6:00 AM',
-      location: 'City Stadium, Boston',
-      price: 'From $50',
-      image: '/placeholder-event-5.jpg',
-      category: 'Sports',
-      featured: false,
-    },
-    {
-      id: 6,
-      title: 'Comedy Night Live',
-      date: 'April 22, 2026',
-      time: '8:00 PM',
-      location: 'Laugh Factory, Chicago',
-      price: 'From $25',
-      image: '/placeholder-event-6.jpg',
-      category: 'Entertainment',
-      featured: false,
-    },
-    {
-      id: 7,
-      title: 'Business Conference 2026',
-      date: 'June 10, 2026',
-      time: '9:00 AM',
-      location: 'Hilton Hotel, Miami',
-      price: 'From $299',
-      image: '/placeholder-event-7.jpg',
-      category: 'Business',
-      featured: false,
-    },
-    {
-      id: 8,
-      title: 'Jazz Night Under Stars',
-      date: 'May 15, 2026',
-      time: '7:30 PM',
-      location: 'Waterfront Park, Seattle',
-      price: 'From $30',
-      image: '/placeholder-event-8.jpg',
-      category: 'Music',
-      featured: false,
-    },
-  ];
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events?${params}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch events');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          setEvents(data.data || []);
+          setPagination(prev => ({
+            ...prev,
+            total: data.total || 0,
+            pages: data.pages || 1
+          }));
+        }
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [pagination.page, pagination.limit]);
+
+  // Format date helper
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Format time helper
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  // Extract category from description or use default
+  const getEventCategory = (event) => {
+    // Try to find category in description or default to 'Event'
+    const description = event.description?.toLowerCase() || '';
+    if (description.includes('music') || description.includes('concert')) return 'Music';
+    if (description.includes('sport') || description.includes('marathon')) return 'Sports';
+    if (description.includes('tech') || description.includes('conference')) return 'Technology';
+    if (description.includes('art') || description.includes('gallery')) return 'Arts';
+    if (description.includes('food') || description.includes('wine')) return 'Food & Drink';
+    if (description.includes('business')) return 'Business';
+    return 'Event';
+  };
+
+  // Filter events based on search and filters
+  const filteredEvents = events.filter(event => {
+    // Search filter
+    if (searchQuery && !event.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !event.description?.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    // Category filter
+    if (selectedCategory !== 'all') {
+      const eventCategory = getEventCategory(event);
+      if (eventCategory !== selectedCategory) {
+        return false;
+      }
+    }
+
+    // Price filter
+    if (priceRange !== 'all') {
+      const price = event.ticketPrice;
+      if (priceRange === 'free' && price > 0) return false;
+      if (priceRange === 'under50' && price >= 50) return false;
+      if (priceRange === '50-100' && (price < 50 || price > 100)) return false;
+      if (priceRange === 'over100' && price <= 100) return false;
+    }
+
+    return true;
+  });
+
+  // Sort events
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    switch (sortBy) {
+      case 'date':
+        return new Date(a.date) - new Date(b.date);
+      case 'price-low':
+        return a.ticketPrice - b.ticketPrice;
+      case 'price-high':
+        return b.ticketPrice - a.ticketPrice;
+      case 'name':
+        return a.title.localeCompare(b.title);
+      default:
+        return 0;
+    }
+  });
+
+  // Get featured events (first 3)
+  const featuredEvents = sortedEvents.slice(0, 3);
 
   const categories = [
     'All Events',
@@ -137,6 +167,34 @@ export default function EventsPage() {
     { label: '$50 - $100', value: '50-100' },
     { label: 'Over $100', value: 'over100' },
   ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#a855f7] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[#605B51]">Loading events...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-[#2d2a28] mb-2">Failed to Load Events</h2>
+          <p className="text-[#605B51] mb-6">{error}</p>
+          <Button variant="purple" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -209,52 +267,58 @@ export default function EventsPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {featuredEvents.map((event) => (
-              <Link key={event.id} href={`/events/${event.id}`}>
-                <Card className="group cursor-pointer hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                  {/* Event Image */}
-                  <div className="relative h-56 bg-gradient-to-br from-[#D8D365] to-[#a855f7] overflow-hidden">
-                    <div className="absolute inset-0 bg-[#2d2a28] opacity-20 group-hover:opacity-10 transition-opacity" />
-                    <Badge className="absolute top-4 right-4 bg-[#E6F082] text-[#2d2a28] border-none">
-                      Featured
-                    </Badge>
-                  </div>
-
-                  {/* Event Info */}
-                  <div className="p-6">
-                    <Badge className="mb-3">{event.category}</Badge>
-                    <h3 className="font-roboto text-xl font-semibold text-[#2d2a28] mb-3 group-hover:text-[#a855f7] transition-colors">
-                      {event.title}
-                    </h3>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-[#605B51]">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {event.date} • {event.time}
-                      </div>
-                      <div className="flex items-center text-sm text-[#605B51]">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {event.location}
-                      </div>
+            {featuredEvents.length === 0 ? (
+              <div className="col-span-3 text-center py-12">
+                <p className="text-[#605B51] text-lg">No featured events available at the moment.</p>
+              </div>
+            ) : (
+              featuredEvents.map((event) => (
+                <Link key={event._id} href={`/events/${event._id}`}>
+                  <Card className="group cursor-pointer hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                    {/* Event Image */}
+                    <div className="relative h-56 bg-gradient-to-br from-[#D8D365] to-[#a855f7] overflow-hidden">
+                      <div className="absolute inset-0 bg-[#2d2a28] opacity-20 group-hover:opacity-10 transition-opacity" />
+                      <Badge className="absolute top-4 right-4 bg-[#E6F082] text-[#2d2a28] border-none">
+                        Featured
+                      </Badge>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <span className="font-roboto font-semibold text-[#a855f7] text-lg">
-                        {event.price}
-                      </span>
-                      <span className="text-sm font-medium text-[#605B51] group-hover:text-[#a855f7] transition-colors">
-                        View Details →
-                      </span>
+                    {/* Event Info */}
+                    <div className="p-6">
+                      <Badge className="mb-3">{getEventCategory(event.title)}</Badge>
+                      <h3 className="font-roboto text-xl font-semibold text-[#2d2a28] mb-3 group-hover:text-[#a855f7] transition-colors">
+                        {event.title}
+                      </h3>
+                      
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm text-[#605B51]">
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {formatDate(event.date)} • {formatTime(event.date)}
+                        </div>
+                        <div className="flex items-center text-sm text-[#605B51]">
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {event.venue}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                        <span className="font-roboto font-semibold text-[#a855f7] text-lg">
+                          {event.ticketPrice === 0 ? 'Free' : `From $${event.ticketPrice}`}
+                        </span>
+                        <span className="text-sm font-medium text-[#605B51] group-hover:text-[#a855f7] transition-colors">
+                          View Details →
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              </Link>
-            ))}
+                  </Card>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -352,79 +416,113 @@ export default function EventsPage() {
                   All Events
                 </h2>
                 <span className="text-sm text-[#605B51]">
-                  Showing {allEvents.length} events
+                  Showing {sortedEvents.length} events
                 </span>
               </div>
 
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {allEvents.map((event) => (
-                  <Link key={event.id} href={`/events/${event.id}`}>
-                    <Card className="group cursor-pointer hover:shadow-xl transition-all duration-300 h-full">
-                      {/* Event Image */}
-                      <div className="relative h-48 bg-gradient-to-br from-[#D8D365] to-[#a855f7] overflow-hidden rounded-t-lg">
-                        <div className="absolute inset-0 bg-[#2d2a28] opacity-20 group-hover:opacity-10 transition-opacity" />
-                        {event.featured && (
-                          <Badge className="absolute top-3 right-3 bg-[#E6F082] text-[#2d2a28] border-none text-xs">
-                            Featured
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Event Info */}
-                      <div className="p-5">
-                        <Badge className="mb-2 text-xs">{event.category}</Badge>
-                        <h3 className="font-roboto text-lg font-semibold text-[#2d2a28] mb-2 group-hover:text-[#a855f7] transition-colors line-clamp-2">
-                          {event.title}
-                        </h3>
-                        
-                        <div className="space-y-1.5 mb-3">
-                          <div className="flex items-center text-xs text-[#605B51]">
-                            <svg className="w-3.5 h-3.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            {event.date}
-                          </div>
-                          <div className="flex items-center text-xs text-[#605B51] line-clamp-1">
-                            <svg className="w-3.5 h-3.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            {event.location}
-                          </div>
+              {sortedEvents.length === 0 ? (
+                <div className="text-center py-16 bg-gray-50 rounded-lg">
+                  <div className="text-6xl mb-4">🎫</div>
+                  <h3 className="text-xl font-semibold text-[#2d2a28] mb-2">No Events Found</h3>
+                  <p className="text-[#605B51] mb-6">
+                    {searchQuery || selectedCategory !== 'all' || priceRange !== 'all' 
+                      ? 'Try adjusting your filters to find more events.'
+                      : 'No events are currently available.'}
+                  </p>
+                  {(searchQuery || selectedCategory !== 'all' || priceRange !== 'all') && (
+                    <Button variant="outline" onClick={() => {
+                      setSelectedCategory('all');
+                      setSelectedDate('all');
+                      setPriceRange('all');
+                      setSortBy('date');
+                      setSearchQuery('');
+                    }}>
+                      Clear All Filters
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {sortedEvents.map((event) => (
+                    <Link key={event._id} href={`/events/${event._id}`}>
+                      <Card className="group cursor-pointer hover:shadow-xl transition-all duration-300 h-full">
+                        {/* Event Image */}
+                        <div className="relative h-48 bg-gradient-to-br from-[#D8D365] to-[#a855f7] overflow-hidden rounded-t-lg">
+                          <div className="absolute inset-0 bg-[#2d2a28] opacity-20 group-hover:opacity-10 transition-opacity" />
                         </div>
 
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                          <span className="font-roboto font-semibold text-[#a855f7]">
-                            {event.price}
-                          </span>
-                          <span className="text-xs font-medium text-[#605B51] group-hover:text-[#a855f7] transition-colors">
-                            Details →
-                          </span>
+                        {/* Event Info */}
+                        <div className="p-5">
+                          <Badge className="mb-2 text-xs">{getEventCategory(event.title)}</Badge>
+                          <h3 className="font-roboto text-lg font-semibold text-[#2d2a28] mb-2 group-hover:text-[#a855f7] transition-colors line-clamp-2">
+                            {event.title}
+                          </h3>
+                          
+                          <div className="space-y-1.5 mb-3">
+                            <div className="flex items-center text-xs text-[#605B51]">
+                              <svg className="w-3.5 h-3.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              {formatDate(event.date)} • {formatTime(event.date)}
+                            </div>
+                            <div className="flex items-center text-xs text-[#605B51] line-clamp-1">
+                              <svg className="w-3.5 h-3.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              {event.venue}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                            <span className="font-roboto font-semibold text-[#a855f7]">
+                              {event.ticketPrice === 0 ? 'Free' : `From $${event.ticketPrice}`}
+                            </span>
+                            <span className="text-xs font-medium text-[#605B51] group-hover:text-[#a855f7] transition-colors">
+                              Details →
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )}
 
               {/* Pagination */}
-              <div className="flex justify-center items-center gap-2 mt-12">
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  Previous
-                </button>
-                <button className="px-4 py-2 bg-[#a855f7] text-white rounded-lg font-medium">
-                  1
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7] transition-colors">
-                  2
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7] transition-colors">
-                  3
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7] transition-colors">
-                  Next
-                </button>
-              </div>
+              {pagination.pages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-12">
+                  <button
+                    onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                    disabled={pagination.page === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(pageNum => (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPagination(p => ({ ...p, page: pageNum }))}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        pagination.page === pageNum
+                          ? 'bg-[#a855f7] text-white'
+                          : 'border border-gray-300 text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7]'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                    disabled={pagination.page === pagination.pages}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

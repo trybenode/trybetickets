@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 
@@ -20,12 +21,16 @@ export default function Home() {
               From concerts to conferences, we've got you covered.
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
-              <Button variant="purple" size="lg">
-                Browse Events
-              </Button>
-              <Button variant="dark" size="lg">
-                Become an Organizer
-              </Button>
+              <Link href="/events">
+                <Button variant="purple" size="lg">
+                  Browse Events
+                </Button>
+              </Link>
+              <Link href="/dashboard/organizer">
+                <Button variant="dark" size="lg">
+                  Become an Organizer
+                </Button>
+              </Link>
             </div>
 
             {/* Stats */}
@@ -166,9 +171,11 @@ export default function Home() {
                 Don't miss out on these amazing experiences
               </p>
             </div>
-            <Button variant="outline">
-              View All Events
-            </Button>
+            <Link href="/events">
+              <Button variant="outline">
+                View All Events
+              </Button>
+            </Link>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">

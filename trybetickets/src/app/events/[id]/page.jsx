@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Button from '@/components/ui/Button';
@@ -9,93 +9,113 @@ import Badge from '@/components/ui/Badge';
 
 export default function EventDetailsPage({ params }) {
   const resolvedParams = use(params);
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketQuantity, setTicketQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('details');
 
-  // Mock event data - in real app, fetch based on resolvedParams.id
-  const event = {
-    id: resolvedParams.id,
-    title: 'Summer Music Festival 2026',
-    date: 'June 15, 2026',
-    time: '6:00 PM - 11:00 PM',
-    location: 'Central Park, New York',
-    address: '85th Street Transverse, New York, NY 10024',
-    category: 'Music',
-    image: '/placeholder-event-hero.jpg',
-    organizer: {
-      name: 'Live Nation Events',
-      verified: true,
-      followers: '12.5K',
-      events: 45,
-    },
-    description: `Join us for an unforgettable evening of live music under the stars! The Summer Music Festival 2026 brings together some of the biggest names in the industry for a night you won't want to miss.
+  // Fetch event data
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${resolvedParams.id}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch event: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to fetch event');
+        }
+        
+        setEvent(data.data);
+      } catch (err) {
+        console.error('Error fetching event:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    Experience world-class performances across multiple stages, featuring diverse genres from rock and pop to electronic and indie. Our carefully curated lineup promises something for everyone.
+    if (resolvedParams.id) {
+      fetchEvent();
+    }
+  }, [resolvedParams.id]);
 
-    Event Highlights:
-    • Multiple stages with non-stop performances
-    • Food trucks and beverage vendors
-    • VIP lounge areas with exclusive amenities
-    • Professional sound and lighting production
-    • On-site parking and shuttle services
-
-    Please note: This is a rain-or-shine event. Tickets are non-refundable but can be transferred.`,
-    ticketTypes: [
-      {
-        id: 1,
-        type: 'General Admission',
-        price: 45,
-        available: true,
-        benefits: ['Access to main grounds', 'All stages access', 'General seating'],
-      },
-      {
-        id: 2,
-        type: 'VIP Experience',
-        price: 125,
-        available: true,
-        benefits: ['All GA benefits', 'VIP lounge access', 'Priority entry', 'Complimentary drinks', 'Exclusive merchandise'],
-      },
-      {
-        id: 3,
-        type: 'Premium Box',
-        price: 350,
-        available: true,
-        benefits: ['Private box seating', 'Dedicated waiter service', 'Premium catering', 'VIP parking pass', 'Meet & greet opportunity'],
-      },
-    ],
-    stats: {
-      attendees: '2.5K+',
-      rating: 4.8,
-      reviews: 342,
-    },
+  // Helper functions
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const getEventCategory = (title) => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes('music') || lowerTitle.includes('concert') || lowerTitle.includes('festival')) return 'Music';
+    if (lowerTitle.includes('tech') || lowerTitle.includes('startup') || lowerTitle.includes('ai')) return 'Technology';
+    if (lowerTitle.includes('art') || lowerTitle.includes('gallery') || lowerTitle.includes('exhibition')) return 'Arts';
+    if (lowerTitle.includes('food') || lowerTitle.includes('wine') || lowerTitle.includes('culinary')) return 'Food & Drink';
+    if (lowerTitle.includes('sport') || lowerTitle.includes('game') || lowerTitle.includes('match')) return 'Sports';
+    if (lowerTitle.includes('workshop') || lowerTitle.includes('seminar') || lowerTitle.includes('course')) return 'Education';
+    if (lowerTitle.includes('community') || lowerTitle.includes('charity') || lowerTitle.includes('volunteer')) return 'Community';
+    return 'Entertainment';
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#a855f7] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[#605B51]">Loading event details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !event) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-[#2d2a28] mb-2">Event Not Found</h2>
+          <p className="text-[#605B51] mb-6">
+            {error || 'The event you are looking for does not exist or has been removed.'}
+          </p>
+          <Link href="/events">
+            <Button variant="purple">Browse All Events</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate available tickets
+  const availableTickets = event.totalTickets - event.ticketsSold;
+  const ticketsSoldPercentage = (event.ticketsSold / event.totalTickets) * 100;
+
   const relatedEvents = [
-    {
-      id: 2,
-      title: 'Jazz Night Under Stars',
-      date: 'May 15, 2026',
-      location: 'Waterfront Park',
-      price: 'From $30',
-      category: 'Music',
-    },
-    {
-      id: 3,
-      title: 'Rock Legends Tour',
-      date: 'July 8, 2026',
-      location: 'Madison Square Garden',
-      price: 'From $75',
-      category: 'Music',
-    },
-    {
-      id: 4,
-      title: 'Electronic Beats Festival',
-      date: 'August 20, 2026',
-      location: 'Brooklyn Warehouse',
-      price: 'From $55',
-      category: 'Music',
-    },
+    // You can fetch related events from API later
   ];
 
   const handleTicketSelect = (ticket) => {
@@ -115,10 +135,10 @@ export default function EventDetailsPage({ params }) {
           <div className="w-full">
             <div className="flex items-center gap-3 mb-4">
               <Badge className="bg-[#E6F082] text-[#2d2a28] border-none">
-                {event.category}
+                {getEventCategory(event.title)}
               </Badge>
               <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                {event.stats.attendees} Going
+                {event.ticketsSold} Tickets Sold
               </span>
             </div>
             <h1 className="font-roboto text-5xl md:text-6xl font-bold text-white mb-4">
@@ -129,20 +149,20 @@ export default function EventDetailsPage({ params }) {
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span className="font-medium">{event.date}</span>
+                <span className="font-medium">{formatDate(event.date)}</span>
               </div>
               <div className="flex items-center">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="font-medium">{event.time}</span>
+                <span className="font-medium">{formatTime(event.date)}</span>
               </div>
               <div className="flex items-center">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="font-medium">{event.location}</span>
+                <span className="font-medium">{event.venue}</span>
               </div>
             </div>
           </div>
@@ -193,21 +213,21 @@ export default function EventDetailsPage({ params }) {
                   <div className="grid grid-cols-3 gap-4 mt-8">
                     <Card className="text-center p-6">
                       <div className="text-3xl font-bold text-[#a855f7] mb-1">
-                        {event.stats.attendees}
+                        {event.totalTickets}
                       </div>
-                      <div className="text-sm text-[#605B51]">Attendees</div>
+                      <div className="text-sm text-[#605B51]">Total Tickets</div>
                     </Card>
                     <Card className="text-center p-6">
                       <div className="text-3xl font-bold text-[#a855f7] mb-1">
-                        {event.stats.rating}
+                        {event.ticketsSold}
                       </div>
-                      <div className="text-sm text-[#605B51]">Rating</div>
+                      <div className="text-sm text-[#605B51]">Sold</div>
                     </Card>
                     <Card className="text-center p-6">
                       <div className="text-3xl font-bold text-[#a855f7] mb-1">
-                        {event.stats.reviews}
+                        {availableTickets}
                       </div>
-                      <div className="text-sm text-[#605B51]">Reviews</div>
+                      <div className="text-sm text-[#605B51]">Available</div>
                     </Card>
                   </div>
 
@@ -219,27 +239,24 @@ export default function EventDetailsPage({ params }) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-linear-to-br from-[#D8D365] to-[#a855f7] rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                          {event.organizer.name.charAt(0)}
+                          {event.organizerName.charAt(0)}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <h4 className="font-roboto font-semibold text-[#2d2a28]">
-                              {event.organizer.name}
+                              {event.organizerName}
                             </h4>
-                            {event.organizer.verified && (
-                              <svg className="w-5 h-5 text-[#a855f7]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            )}
+                            <svg className="w-5 h-5 text-[#a855f7]" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
                           </div>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-[#605B51]">
-                            <span>{event.organizer.followers} Followers</span>
-                            <span>•</span>
-                            <span>{event.organizer.events} Events</span>
-                          </div>
+                          {event.organizerContact && (
+                            <p className="mt-1 text-sm text-[#605B51]">
+                              {event.organizerContact}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <Button variant="outline">Follow</Button>
                     </div>
                   </Card>
                 </div>
@@ -253,9 +270,9 @@ export default function EventDetailsPage({ params }) {
                   <Card className="p-6">
                     <div className="mb-4">
                       <h3 className="font-roboto font-semibold text-[#2d2a28] mb-2">
-                        {event.location}
+                        {event.venue}
                       </h3>
-                      <p className="text-[#605B51]">{event.address}</p>
+                      <p className="text-[#605B51]">Event venue location</p>
                     </div>
                     {/* Map Placeholder */}
                     <div className="w-full h-64 bg-linear-to-br from-[#D8D365] to-[#a855f7] rounded-lg flex items-center justify-center">
@@ -334,82 +351,87 @@ export default function EventDetailsPage({ params }) {
                     Select Tickets
                   </h3>
 
-                  <div className="space-y-4 mb-6">
-                    {event.ticketTypes.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        onClick={() => handleTicketSelect(ticket)}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedTicket?.id === ticket.id
-                            ? 'border-[#a855f7] bg-[#a855f7]/5'
-                            : 'border-gray-200 hover:border-[#a855f7]/50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-roboto font-semibold text-[#2d2a28]">
-                              {ticket.type}
-                            </h4>
-                            <p className="text-2xl font-bold text-[#a855f7] mt-1">
-                              ${ticket.price}
-                            </p>
+                  {availableTickets > 0 ? (
+                    <>
+                      <div className="space-y-4 mb-6">
+                        <div
+                          onClick={() => setSelectedTicket({ id: 1, type: 'General Admission', price: event.ticketPrice })}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedTicket
+                              ? 'border-[#a855f7] bg-[#a855f7]/5'
+                              : 'border-gray-200 hover:border-[#a855f7]/50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="font-roboto font-semibold text-[#2d2a28]">
+                                General Admission
+                              </h4>
+                              <p className="text-2xl font-bold text-[#a855f7] mt-1">
+                                {event.ticketPrice === 0 ? 'Free' : `$${event.ticketPrice}`}
+                              </p>
+                            </div>
+                            <input
+                              type="radio"
+                              checked={!!selectedTicket}
+                              onChange={() => setSelectedTicket({ id: 1, type: 'General Admission', price: event.ticketPrice })}
+                              className="w-5 h-5 text-[#a855f7] border-gray-300 focus:ring-[#a855f7] cursor-pointer"
+                            />
                           </div>
-                          <input
-                            type="radio"
-                            checked={selectedTicket?.id === ticket.id}
-                            onChange={() => handleTicketSelect(ticket)}
-                            className="w-5 h-5 text-[#a855f7] border-gray-300 focus:ring-[#a855f7] cursor-pointer"
-                          />
-                        </div>
-                        <ul className="space-y-1 mt-3">
-                          {ticket.benefits.map((benefit, index) => (
-                            <li key={index} className="flex items-center text-xs text-[#605B51]">
+                          <div className="mt-3">
+                            <div className="flex items-center text-xs text-[#605B51] mb-2">
                               <svg className="w-4 h-4 mr-2 text-[#a855f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              {benefit}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedTicket && (
-                    <div className="space-y-4">
-                      {/* Quantity Selector */}
-                      <div>
-                        <label className="block text-sm font-semibold text-[#2d2a28] mb-2">
-                          Quantity
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => setTicketQuantity(Math.max(1, ticketQuantity - 1))}
-                            className="w-10 h-10 border-2 border-gray-300 rounded-lg hover:border-[#a855f7] text-[#2d2a28] font-semibold transition-colors"
-                          >
-                            −
-                          </button>
-                          <input
-                            type="number"
-                            value={ticketQuantity}
-                            onChange={(e) => setTicketQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-16 h-10 text-center border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a855f7] focus:border-transparent text-[#2d2a28] font-semibold"
-                          />
-                          <button
-                            onClick={() => setTicketQuantity(ticketQuantity + 1)}
-                            className="w-10 h-10 border-2 border-gray-300 rounded-lg hover:border-[#a855f7] text-[#2d2a28] font-semibold transition-colors"
-                          >
-                            +
-                          </button>
+                              Access to event
+                            </div>
+                            <div className="flex items-center text-xs text-[#605B51]">
+                              <svg className="w-4 h-4 mr-2 text-[#a855f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {availableTickets} tickets available
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Total */}
-                      <div className="pt-4 border-t border-gray-200">
+                      {selectedTicket && (
+                        <div className="space-y-4">
+                          {/* Quantity Selector */}
+                          <div>
+                            <label className="block text-sm font-semibold text-[#2d2a28] mb-2">
+                              Quantity
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setTicketQuantity(Math.max(1, ticketQuantity - 1))}
+                                className="w-10 h-10 border-2 border-gray-300 rounded-lg hover:border-[#a855f7] text-[#2d2a28] font-semibold transition-colors"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                value={ticketQuantity}
+                                onChange={(e) => setTicketQuantity(Math.max(1, Math.min(availableTickets, parseInt(e.target.value) || 1)))}
+                                max={availableTickets}
+                                className="w-16 h-10 text-center border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a855f7] focus:border-transparent text-[#2d2a28] font-semibold"
+                              />
+                              <button
+                                onClick={() => setTicketQuantity(Math.min(availableTickets, ticketQuantity + 1))}
+                                disabled={ticketQuantity >= availableTickets}
+                                className="w-10 h-10 border-2 border-gray-300 rounded-lg hover:border-[#a855f7] text-[#2d2a28] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Total */}
+                          <div className="pt-4 border-t border-gray-200">
                         <div className="flex items-center justify-between mb-4">
                           <span className="text-[#605B51]">Total</span>
                           <span className="text-3xl font-bold text-[#2d2a28]">
-                            ${totalPrice.toFixed(2)}
+                            {event.ticketPrice === 0 ? 'Free' : `$${totalPrice.toFixed(2)}`}
                           </span>
                         </div>
                         <Button variant="primary" fullWidth size="lg">
@@ -423,6 +445,18 @@ export default function EventDetailsPage({ params }) {
                     <p className="text-center text-sm text-[#605B51] py-4">
                       Select a ticket type to continue
                     </p>
+                  )}
+                </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-5xl mb-4">🎟️</div>
+                      <h4 className="font-roboto font-semibold text-[#2d2a28] mb-2">
+                        Sold Out
+                      </h4>
+                      <p className="text-[#605B51] text-sm">
+                        All tickets for this event have been sold.
+                      </p>
+                    </div>
                   )}
                 </Card>
 
