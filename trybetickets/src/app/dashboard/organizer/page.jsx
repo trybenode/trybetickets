@@ -270,15 +270,15 @@ export default function OrganizerDashboard() {
                   key={event._id}
                   className="border-2 border-gray-200 rounded-lg p-5 hover:border-[#a855f7] transition-all"
                 >
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
                       <Link href={`/dashboard/organizer/events/${event._id}`}>
-                        <h3 className="font-roboto text-lg font-semibold text-[#2d2a28] hover:text-[#a855f7] transition-colors">
+                        <h3 className="font-roboto text-lg font-semibold text-[#2d2a28] hover:text-[#a855f7] transition-colors break-words">
                           {event.title}
                         </h3>
                       </Link>
-                      <span className={`text-xs px-3 py-1 rounded-full border capitalize ${getStatusColor(event.status)}`}>
+                      <span className={`text-xs px-3 py-1 rounded-full border capitalize self-start sm:self-auto ${getStatusColor(event.status)}`}>
                         {event.status}
                       </span>
                     </div>
@@ -302,32 +302,38 @@ export default function OrganizerDashboard() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6 text-sm">
-                      <div>
-                        <span className="text-[#605B51]">Revenue: </span>
-                        <span className="font-semibold text-[#2d2a28]">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-[#605B51]">Revenue:</span>
+                        <span className="font-semibold text-green-600">
                           ₦{(event.ticketsSold * event.ticketPrice).toLocaleString()}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-[#605B51]">Price: </span>
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-[#a855f7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        <span className="text-[#605B51]">Price:</span>
                         <span className="font-semibold text-[#2d2a28]">₦{event.ticketPrice.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-2 ml-4">
-                    <Link href={`/dashboard/organizer/events/${event._id}`}>
-                      <Button variant="outline" size="sm">
+                  <div className="flex flex-row sm:flex-row lg:flex-col gap-2 w-full sm:w-auto lg:w-auto lg:ml-4">
+                    <Link href={`/dashboard/organizer/events/${event._id}`} className="flex-1 sm:flex-none">
+                      <Button variant="outline" size="sm" className="w-full">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                          </svg>
                         View
                       </Button>
                     </Link>
-                    <Link href={`/dashboard/organizer/events/${event._id}/edit`}>
-                      <Button variant="outline" size="sm">
+                    <Link href={`/dashboard/organizer/events/${event._id}/edit`} className="flex-1 sm:flex-none">
+                      <Button variant="outline" size="sm" className="w-full">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>

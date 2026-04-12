@@ -337,15 +337,15 @@ export default function OrganizerEventsPage() {
             <div className="grid gap-6">
               {filteredEvents.map((event) => (
                 <Card key={event._id} className="p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100">
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
                         <Link href={`/dashboard/organizer/events/${event._id}`}>
-                          <h2 className="font-roboto text-2xl font-bold text-[#2d2a28] hover:text-[#a855f7] transition-colors cursor-pointer">
+                          <h2 className="font-roboto text-xl sm:text-2xl font-bold text-[#2d2a28] hover:text-[#a855f7] transition-colors cursor-pointer break-words">
                             {event.title}
                           </h2>
                         </Link>
-                        <Badge className={`${getStatusColor(event.status)} font-semibold`}>
+                        <Badge className={`${getStatusColor(event.status)} font-semibold self-start sm:self-auto`}>
                           {event.status}
                         </Badge>
                       </div>
@@ -382,9 +382,9 @@ export default function OrganizerEventsPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-6 text-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
                         <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           <span className="text-[#605B51]">Revenue:</span>
@@ -393,7 +393,7 @@ export default function OrganizerEventsPage() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-[#a855f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-[#a855f7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                           </svg>
                           <span className="text-[#605B51]">Price:</span>
@@ -405,7 +405,7 @@ export default function OrganizerEventsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-col gap-2 ml-4">
+                    <div className="flex sm:flex-col lg:flex-col gap-2 w-full sm:w-auto lg:w-auto lg:ml-4">
                       <Link href={`/dashboard/organizer/events/${event._id}`}>
                         <Button variant="outline" size="sm" className="w-full">
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
