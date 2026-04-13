@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function EventDetailsPage({ params }) {
   const resolvedParams = use(params);
@@ -15,6 +17,28 @@ export default function EventDetailsPage({ params }) {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketQuantity, setTicketQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('details');
+  
+  // Reviews state
+  const [reviews, setReviews] = useState([]);
+  const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewError, setReviewError] = useState(null);
+  
+  // Review form state
+  const [user, setUser] = useState(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitError, setReviewSubmitError] = useState(null);
+
+  // Auth listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Fetch event data
   useEffect(() => {
@@ -47,6 +71,40 @@ export default function EventDetailsPage({ params }) {
       fetchEvent();
     }
   }, [resolvedParams.id]);
+
+  // Fetch reviews when reviews tab is active
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (activeTab !== 'reviews' || !resolvedParams.id) return;
+      
+      try {
+        setReviewsLoading(true);
+        setReviewError(null);
+        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/events/${resolvedParams.id}/reviews`
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch reviews');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setReviews(data.data || []);
+          setReviewStats(data.stats || { averageRating: 0, totalReviews: 0 });
+        }
+      } catch (err) {
+        console.error('Error fetching reviews:', err);
+        setReviewError(err.message);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [activeTab, resolvedParams.id]);
 
   // Helper functions
   const formatDate = (dateString) => {
@@ -126,6 +184,80 @@ export default function EventDetailsPage({ params }) {
   };
 
   const totalPrice = selectedTicket ? selectedTicket.price * ticketQuantity : 0;
+
+  // Handle review submission
+  const submitReview = async (e) => {
+    e.preventDefault();
+    
+    if (!user) {
+      setReviewSubmitError('You must be logged in to submit a review');
+      return;
+    }
+    
+    if (reviewRating === 0) {
+      setReviewSubmitError('Please select a rating');
+      return;
+    }
+    
+    if (!reviewComment.trim()) {
+      setReviewSubmitError('Please enter a comment');
+      return;
+    }
+    
+    try {
+      setSubmittingReview(true);
+      setReviewSubmitError(null);
+      
+      const token = await user.getIdToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/events/${resolvedParams.id}/reviews`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating: reviewRating,
+            comment: reviewComment.trim(),
+          }),
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to submit review');
+      }
+      
+      // Add new review to the list
+      setReviews([data.data, ...reviews]);
+      setReviewStats(data.stats);
+      
+      // Reset form
+      setReviewRating(0);
+      setReviewComment('');
+      setShowReviewForm(false);
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      setReviewSubmitError(err.message);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  // Format time ago
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+    return date.toLocaleDateString();
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -323,46 +455,192 @@ export default function EventDetailsPage({ params }) {
                     <div className="flex items-center gap-2">
                       <div className="flex">
                         {[...Array(5)].map((_, i) => (
-                          <svg key={i} className="w-5 h-5 text-[#E6F082]" fill="currentColor" viewBox="0 0 20 20">
+                          <svg 
+                            key={i} 
+                            className={`w-5 h-5 ${
+                              i < Math.round(reviewStats.averageRating)
+                                ? 'text-[#E6F082]'
+                                : 'text-gray-300'
+                            }`} 
+                            fill="currentColor" 
+                            viewBox="0 0 20 20"
+                          >
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                           </svg>
                         ))}
                       </div>
                       <span className="font-semibold text-[#2d2a28]">
-                        {event.stats.rating} ({event.stats.reviews} reviews)
+                        {reviewStats.averageRating.toFixed(1)} ({reviewStats.totalReviews} reviews)
                       </span>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Card key={i} className="p-6">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-linear-to-br from-[#D8D365] to-[#a855f7] rounded-full flex items-center justify-center text-white font-bold">
-                              U
-                            </div>
-                            <div>
-                              <h4 className="font-roboto font-semibold text-[#2d2a28]">
-                                User Name
-                              </h4>
-                              <p className="text-xs text-[#605B51]">2 days ago</p>
+                  {/* Review Submission Form - Only for logged in users */}
+                  {user && (
+                    <Card className="p-6 mb-6 bg-gradient-to-r from-purple-50 to-yellow-50">
+                      {!showReviewForm ? (
+                        <button
+                          onClick={() => setShowReviewForm(true)}
+                          className="w-full py-3 px-6 bg-gradient-to-r from-[#D8D365] to-[#a855f7] text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200"
+                        >
+                          Write a Review
+                        </button>
+                      ) : (
+                        <form onSubmit={submitReview} className="space-y-4">
+                          <h3 className="font-roboto text-lg font-semibold text-[#2d2a28]">
+                            Share Your Experience
+                          </h3>
+                          
+                          {/* Rating Selection */}
+                          <div>
+                            <label className="block text-sm font-medium text-[#605B51] mb-2">
+                              Rating *
+                            </label>
+                            <div className="flex gap-2">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => setReviewRating(star)}
+                                  className="focus:outline-none transition-transform hover:scale-110"
+                                >
+                                  <svg
+                                    className={`w-8 h-8 ${
+                                      star <= reviewRating
+                                        ? 'text-[#E6F082]'
+                                        : 'text-gray-300'
+                                    }`}
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                </button>
+                              ))}
                             </div>
                           </div>
-                          <div className="flex">
-                            {[...Array(5)].map((_, j) => (
-                              <svg key={j} className="w-4 h-4 text-[#E6F082]" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                            ))}
+
+                          {/* Comment */}
+                          <div>
+                            <label className="block text-sm font-medium text-[#605B51] mb-2">
+                              Your Review *
+                            </label>
+                            <textarea
+                              value={reviewComment}
+                              onChange={(e) => setReviewComment(e.target.value)}
+                              placeholder="Tell us about your experience..."
+                              rows={4}
+                              maxLength={500}
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a855f7] focus:border-transparent transition-all"
+                            />
+                            <p className="text-xs text-[#605B51] mt-1">
+                              {reviewComment.length}/500 characters
+                            </p>
                           </div>
-                        </div>
-                        <p className="font-nunito text-[#605B51]">
-                          Amazing event! Great organization and fantastic performances. Would definitely attend again!
-                        </p>
-                      </Card>
-                    ))}
-                  </div>
+
+                          {reviewSubmitError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-sm text-red-600">{reviewSubmitError}</p>
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3">
+                            <button
+                              type="submit"
+                              disabled={submittingReview}
+                              className="flex-1 py-3 px-6 bg-gradient-to-r from-[#D8D365] to-[#a855f7] text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {submittingReview ? 'Submitting...' : 'Submit Review'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowReviewForm(false);
+                                setReviewRating(0);
+                                setReviewComment('');
+                                setReviewSubmitError(null);
+                              }}
+                              className="px-6 py-3 border-2 border-gray-300 rounded-lg text-[#605B51] hover:border-[#a855f7] hover:text-[#a855f7] transition-all"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Login prompt for non-logged in users */}
+                  {!user && (
+                    <Card className="p-6 mb-6 bg-gray-50 text-center">
+                      <p className="text-[#605B51] mb-3">
+                        Please log in to write a review
+                      </p>
+                      <Link href="/login">
+                        <Button variant="purple">Log In</Button>
+                      </Link>
+                    </Card>
+                  )}
+
+                  {/* Reviews List */}
+                  {reviewsLoading ? (
+                    <div className="text-center py-12">
+                      <div className="w-12 h-12 border-4 border-[#a855f7] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-[#605B51]">Loading reviews...</p>
+                    </div>
+                  ) : reviewError ? (
+                    <div className="text-center py-12">
+                      <p className="text-red-600">Failed to load reviews</p>
+                    </div>
+                  ) : reviews.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg">
+                      <div className="text-5xl mb-3">💭</div>
+                      <p className="text-[#605B51] font-medium">No reviews yet</p>
+                      <p className="text-sm text-[#605B51] mt-2">
+                        Be the first to review this event!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {reviews.map((review) => (
+                        <Card key={review._id} className="p-6">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-[#D8D365] to-[#a855f7] rounded-full flex items-center justify-center text-white font-bold">
+                                {review.userName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <h4 className="font-roboto font-semibold text-[#2d2a28]">
+                                  {review.userName}
+                                </h4>
+                                <p className="text-xs text-[#605B51]">
+                                  {formatTimeAgo(review.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <svg
+                                  key={i}
+                                  className={`w-4 h-4 ${
+                                    i < review.rating ? 'text-[#E6F082]' : 'text-gray-300'
+                                  }`}
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="font-nunito text-[#605B51]">
+                            {review.comment}
+                          </p>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
