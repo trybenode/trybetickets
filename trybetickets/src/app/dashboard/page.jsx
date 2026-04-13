@@ -32,7 +32,7 @@ export default function UserDashboard() {
     }
   }, [authLoading, isAuthenticated, user, router]);
 
-  // Mock data - replace with actual API calls
+  // Fetch user profile and tickets
   useEffect(() => {
     // Don't fetch if still checking auth or not authenticated
     if (authLoading || !isAuthenticated) {
@@ -41,84 +41,53 @@ export default function UserDashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        // TODO: Replace with actual API calls
-        // const profileRes = await fetch('/api/users/profile', { credentials: 'include' });
-        // const ticketsRes = await fetch('/api/users/tickets', { credentials: 'include' });
+        setLoading(true);
+        const { auth } = await import('@/lib/firebase');
+        const currentUser = auth.currentUser;
         
-        // Mock data matching backend response structure
-        const mockProfile = {
-          _id: '1',
-          email: 'user@example.com',
-          name: 'John Doe',
-          phone: '+1234567890',
-          role: 'user',
-          avatar: null,
-          createdAt: '2026-01-15T00:00:00Z',
-        };
+        if (!currentUser) {
+          throw new Error('No authenticated user found');
+        }
+        
+        const idToken = await currentUser.getIdToken();
 
-        const mockTickets = {
-          upcoming: [
-            {
-              _id: 'ticket1',
-              ticketNumber: 'TT-2026-001234',
-              eventId: {
-                _id: 'event1',
-                title: 'Summer Music Festival 2026',
-                date: '2026-06-15T18:00:00Z',
-                location: 'Central Park, New York',
-                category: 'Music',
-              },
-              ticketType: 'VIP Experience',
-              amountPaid: 125,
-              quantity: 2,
-              status: 'confirmed',
-              qrCode: 'QR_CODE_STRING',
-              purchaseDate: '2026-04-01T10:00:00Z',
-            },
-            {
-              _id: 'ticket2',
-              ticketNumber: 'TT-2026-001235',
-              eventId: {
-                _id: 'event2',
-                title: 'Tech Innovation Summit',
-                date: '2026-05-20T09:00:00Z',
-                location: 'Convention Center, SF',
-                category: 'Technology',
-              },
-              ticketType: 'General Admission',
-              amountPaid: 199,
-              quantity: 1,
-              status: 'confirmed',
-              qrCode: 'QR_CODE_STRING_2',
-              purchaseDate: '2026-03-25T15:30:00Z',
-            },
-          ],
-          past: [
-            {
-              _id: 'ticket3',
-              ticketNumber: 'TT-2026-001100',
-              eventId: {
-                _id: 'event3',
-                title: 'New Year Gala 2026',
-                date: '2026-01-01T20:00:00Z',
-                location: 'Grand Ballroom, NY',
-                category: 'Entertainment',
-              },
-              ticketType: 'Premium Box',
-              amountPaid: 350,
-              quantity: 2,
-              status: 'used',
-              qrCode: 'QR_CODE_STRING_3',
-              purchaseDate: '2025-12-15T12:00:00Z',
-            },
-          ],
-        };
+        // Fetch user profile
+        const profileRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
 
-        setProfile(mockProfile);
-        setTickets(mockTickets);
-        setLoading(false);
+        if (!profileRes.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
+        const profileData = await profileRes.json();
+        if (profileData.success) {
+          setProfile(profileData.data);
+        }
+
+        // Fetch user tickets
+        const ticketsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/tickets`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+
+        if (!ticketsRes.ok) {
+          throw new Error('Failed to fetch tickets');
+        }
+
+        const ticketsData = await ticketsRes.json();
+        if (ticketsData.success) {
+          setTickets({
+            upcoming: ticketsData.data.upcoming || [],
+            past: ticketsData.data.past || [],
+          });
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+      } finally {
         setLoading(false);
       }
     };
