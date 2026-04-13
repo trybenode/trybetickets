@@ -199,18 +199,17 @@ export default function UserDashboard() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#605B51]">Total Tickets</span>
                   <span className="font-bold text-[#2d2a28]">
-                    {tickets.upcoming.reduce((sum, t) => sum + t.quantity, 0) +
-                      tickets.past.reduce((sum, t) => sum + t.quantity, 0)}
+                    {tickets.upcoming.length + tickets.past.length}
                   </span>
                 </div>
                 <div className="pt-4 border-t border-gray-200">
                   <span className="text-sm text-[#605B51]">Total Spent</span>
                   <p className="text-2xl font-bold text-[#2d2a28] mt-1">
-                    $
+                    ₦
                     {(
-                      tickets.upcoming.reduce((sum, t) => sum + t.amountPaid, 0) +
-                      tickets.past.reduce((sum, t) => sum + t.amountPaid, 0)
-                    ).toFixed(2)}
+                      tickets.upcoming.reduce((sum, t) => sum + (t.amountPaid || 0), 0) +
+                      tickets.past.reduce((sum, t) => sum + (t.amountPaid || 0), 0)
+                    ).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -292,41 +291,41 @@ export default function UserDashboard() {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <Badge className="text-xs">{ticket.eventId.category}</Badge>
-                            <span className={`text-xs px-3 py-1 rounded-full border ${getStatusColor(ticket.status)}`}>
+                            <Badge className="text-xs capitalize">{ticket.eventId?.category || 'Event'}</Badge>
+                            <span className={`text-xs px-3 py-1 rounded-full border capitalize ${getStatusColor(ticket.status)}`}>
                               {ticket.status}
                             </span>
                           </div>
-                          <Link href={`/events/${ticket.eventId._id}`}>
+                          <Link href={`/events/${ticket.eventId?._id}`}>
                             <h3 className="font-roboto text-lg font-semibold text-[#2d2a28] hover:text-[#a855f7] transition-colors mb-2">
-                              {ticket.eventId.title}
+                              {ticket.eventId?.title || 'Unknown Event'}
                             </h3>
                           </Link>
                           <div className="space-y-1.5">
                             <div className="flex items-center text-sm text-[#605B51]">
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                              {formatDate(ticket.eventId.date)} at {formatTime(ticket.eventId.date)}
+                              {ticket.eventId?.date ? `${formatDate(ticket.eventId.date)} at ${formatTime(ticket.eventId.date)}` : 'Date TBD'}
                             </div>
                             <div className="flex items-center text-sm text-[#605B51]">
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
-                              {ticket.eventId.location}
+                              {ticket.eventId?.venue || 'Venue TBD'}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-[#a855f7]">${ticket.amountPaid}</p>
-                          <p className="text-xs text-[#605B51] mt-1">{ticket.quantity} x {ticket.ticketType}</p>
+                          <p className="text-2xl font-bold text-[#a855f7]">₦{(ticket.amountPaid || 0).toLocaleString()}</p>
+                          <p className="text-xs text-[#605B51] mt-1">{ticket.buyerName}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                         <div className="text-xs text-[#605B51]">
-                          Ticket: <span className="font-mono font-semibold">{ticket.ticketNumber}</span>
+                          QR: <span className="font-mono font-semibold">{ticket.qrToken?.substring(0, 8)}...</span>
                         </div>
                         <div className="flex gap-2">
                           <Link href={`/dashboard/tickets/${ticket._id}`}>
@@ -334,10 +333,17 @@ export default function UserDashboard() {
                               View Ticket
                             </Button>
                           </Link>
-                          {ticket.status === 'confirmed' && (
-                            <Button variant="primary" size="sm">
-                              Download QR
-                            </Button>
+                          {ticket.status === 'valid' && (
+                            <a
+                              href={`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${ticket._id}/qr`}
+                              download={`ticket-${ticket.qrToken}.png`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button variant="primary" size="sm">
+                                Download QR
+                              </Button>
+                            </a>
                           )}
                         </div>
                       </div>
