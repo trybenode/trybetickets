@@ -7,6 +7,7 @@ const ticketRoutes = require("./ticketRoutes");
 const verificationRoutes = require("./verificationRoutes");
 const userRoutes = require("./userRoutes");
 const organizerRoutes = require("./organizerRoutes");
+const reviewRoutes = require("./reviewRoutes");
 
 // Mount routes
 router.use("/events", eventRoutes);
@@ -14,6 +15,7 @@ router.use("/tickets", ticketRoutes);
 router.use("/verify", verificationRoutes);
 router.use("/users", userRoutes);
 router.use("/organizers", organizerRoutes);
+router.use("/", reviewRoutes); // Review routes include event-specific paths
 
 // Health check endpoint
 router.get("/health", (req, res) => {
@@ -36,6 +38,7 @@ router.get("/", (req, res) => {
       verification: "/api/verify",
       users: "/api/users",
       organizers: "/api/organizers",
+      reviews: "/api/events/:eventId/reviews",
       health: "/api/health",
     },
   });
