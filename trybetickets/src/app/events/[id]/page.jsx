@@ -531,7 +531,7 @@ export default function EventDetailsPage({ params }) {
                               placeholder="Tell us about your experience..."
                               rows={4}
                               maxLength={500}
-                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a855f7] focus:border-transparent transition-all"
+                              className="w-full px-4 py-3 text-[#2d2a28] bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a855f7] focus:border-transparent transition-all placeholder:text-gray-400"
                             />
                             <p className="text-xs text-[#605B51] mt-1">
                               {reviewComment.length}/500 characters
