@@ -209,16 +209,14 @@ export default function TicketDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#FEFBF7] py-8">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Link href="/dashboard">
-            <Button variant="outline">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Dashboard
-            </Button>
+        <div className="mb-8">
+          <Link href="/dashboard" className="inline-flex items-center text-[#605B51] hover:text-[#a855f7] transition-colors group">
+            <svg className="w-5 h-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">Back to Dashboard</span>
           </Link>
         </div>
 
@@ -308,12 +306,12 @@ export default function TicketDetailPage() {
               <div className="grid md:grid-cols-2 gap-8">
                 {/* QR Code */}
                 <div className="flex flex-col items-center">
-                  <h3 className="font-roboto font-semibold text-lg text-[#2d2a28] mb-4">
+                  <h3 className="font-roboto font-semibold text-lg text-[#2d2a28] mb-6">
                     Your QR Code
                   </h3>
                   
                   {qrCodeUrl && ticket.status === 'valid' ? (
-                    <div className="bg-white border-4 border-[#a855f7] rounded-lg p-4 mb-4">
+                    <div className="bg-white border-4 border-[#a855f7] rounded-xl p-6 mb-6 shadow-lg">
                       <img
                         src={qrCodeUrl}
                         alt="Ticket QR Code"
@@ -321,44 +319,47 @@ export default function TicketDetailPage() {
                       />
                     </div>
                   ) : ticket.status === 'used' ? (
-                    <div className="bg-gray-100 border-4 border-gray-300 rounded-lg p-4 mb-4 w-56 h-56 flex items-center justify-center">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-4 border-blue-200 rounded-xl p-6 mb-6 w-60 h-60 flex items-center justify-center shadow-lg">
                       <div className="text-center">
-                        <svg className="w-16 h-16 text-gray-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-20 h-20 text-blue-500 mx-auto mb-3" fill="currentColor" viewBox="0 0 20 20">
                           <path
                             fillRule="evenodd"
                             d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                             clipRule="evenodd"
                           />
                         </svg>
-                        <p className="text-sm text-gray-500 font-medium">Checked In</p>
+                        <p className="text-sm text-blue-700 font-semibold">Checked In</p>
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-gray-100 border-4 border-gray-300 rounded-lg p-4 mb-4 w-56 h-56 flex items-center justify-center">
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-4 border-gray-300 rounded-xl p-6 mb-6 w-60 h-60 flex items-center justify-center shadow-lg">
                       <div className="text-center">
-                        <svg className="w-16 h-16 text-gray-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-20 h-20 text-gray-400 mx-auto mb-3" fill="currentColor" viewBox="0 0 20 20">
                           <path
                             fillRule="evenodd"
                             d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
                             clipRule="evenodd"
                           />
                         </svg>
-                        <p className="text-sm text-gray-500 font-medium">Ticket Cancelled</p>
+                        <p className="text-sm text-gray-600 font-semibold">Ticket Cancelled</p>
                       </div>
                     </div>
                   )}
 
-                  <p className="text-xs text-[#605B51] text-center mb-4">
-                    Show this QR code at the event entrance
+                  <p className="text-sm text-[#605B51] text-center mb-6 max-w-xs">
+                    Show this QR code at the event entrance for quick check-in
                   </p>
 
                   {ticket.status === 'valid' && (
-                    <Button variant="primary" onClick={downloadQRCode} className="w-full">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button
+                      onClick={downloadQRCode}
+                      className="w-full bg-gradient-to-r from-[#D8D365] to-[#a855f7] text-white font-semibold py-3 px-6 rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                       Download QR Code
-                    </Button>
+                    </button>
                   )}
                 </div>
 
@@ -410,21 +411,24 @@ export default function TicketDetailPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row gap-4 print:hidden">
-              <Button variant="outline" onClick={printTicket} className="flex-1">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 print:hidden">
+              <button
+                onClick={printTicket}
+                className="flex items-center justify-center px-6 py-3 border-2 border-gray-300 rounded-lg text-[#2d2a28] font-semibold hover:border-[#a855f7] hover:text-[#a855f7] hover:bg-purple-50 transition-all duration-200"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 Print Ticket
-              </Button>
+              </button>
               
-              <Link href={`/events/${ticket.eventId?._id}`} className="flex-1">
-                <Button variant="outline" className="w-full">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <Link href={`/events/${ticket.eventId?._id}`}>
+                <button className="w-full flex items-center justify-center px-6 py-3 border-2 border-gray-300 rounded-lg text-[#2d2a28] font-semibold hover:border-[#a855f7] hover:text-[#a855f7] hover:bg-purple-50 transition-all duration-200">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   View Event Details
-                </Button>
+                </button>
               </Link>
             </div>
           </div>
