@@ -31,6 +31,16 @@ export default function EventDetailsPage({ params }) {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSubmitError, setReviewSubmitError] = useState(null);
+  
+  // Purchase state
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const [purchasedTicket, setPurchasedTicket] = useState(null);
 
   // Auth listener
   useEffect(() => {
@@ -257,6 +267,171 @@ export default function EventDetailsPage({ params }) {
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
     if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
     return date.toLocaleDateString();
+  };
+
+  // Handle purchase with Paystack
+  const handlePurchase = async (e) => {
+    e.preventDefault();
+    
+    if (!selectedTicket) {
+      setPurchaseError('Please select a ticket type');
+      return;
+    }
+    
+    if (!buyerName.trim() || !buyerEmail.trim() || !buyerPhone.trim()) {
+      setPurchaseError('Please fill in all fields');
+      return;
+    }
+    
+    // Validate email
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(buyerEmail)) {
+      setPurchaseError('Please enter a valid email address');
+      return;
+    }
+    
+    try {
+      setPurchasing(true);
+      setPurchaseError(null);
+      
+      // Initialize payment with backend
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payments/initialize`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            eventId: resolvedParams.id,
+            buyerName: buyerName.trim(),
+            buyerEmail: buyerEmail.trim(),
+            buyerPhone: buyerPhone.trim(),
+            userId: user?.uid || null,
+          }),
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const errorMessage = data.errors && data.errors.length > 0 
+          ? data.errors.join(', ')
+          : (data.message || 'Failed to initialize payment');
+        throw new Error(errorMessage);
+      }
+      
+      // Load Paystack inline script
+      const script = document.createElement('script');
+      script.src = 'https://js.paystack.co/v1/inline.js';
+      script.async = true;
+      document.body.appendChild(script);
+      
+      script.onload = () => {
+        // Initialize Paystack payment
+        const handler = window.PaystackPop.setup({
+          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
+          email: buyerEmail.trim(),
+          amount: selectedTicket.price * 100, // Amount in kobo
+          ref: data.data.reference,
+          callback: async (response) => {
+            // Payment successful - verify and create ticket
+            try {
+              const verifyResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/payments/verify`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    reference: response.reference,
+                  }),
+                }
+              );
+              
+              const verifyData = await verifyResponse.json();
+              
+              if (!verifyResponse.ok) {
+                throw new Error(verifyData.message || 'Payment verification failed');
+              }
+              
+              // Success!
+              setPurchasedTicket(verifyData.data);
+              setPurchaseSuccess(true);
+              
+              // Reset form
+              setBuyerName('');
+              setBuyerEmail('');
+              setBuyerPhone('');
+              setSelectedTicket(null);
+              setTicketQuantity(1);
+              
+              // Refresh event data
+              const eventResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${resolvedParams.id}`);
+              if (eventResponse.ok) {
+                const eventData = await eventResponse.json();
+                if (eventData.success) {
+                  setEvent(eventData.data);
+                }
+              }
+            } catch (err) {
+              console.error('Error verifying payment:', err);
+              setPurchaseError(err.message);
+            } finally {
+              setPurchasing(false);
+            }
+          },
+          onClose: () => {
+            setPurchasing(false);
+            setPurchaseError('Payment was cancelled');
+          },
+        });
+        
+        handler.openIframe();
+      };
+      
+      script.onerror = () => {
+        setPurchasing(false);
+        setPurchaseError('Failed to load payment gateway');
+      };
+      
+    } catch (err) {
+      console.error('Error initializing payment:', err);
+      setPurchaseError(err.message);
+      setPurchasing(false);
+    }
+  };
+
+  // Open checkout modal
+  const openCheckout = async () => {
+    if (!selectedTicket) {
+      alert('Please select a ticket type first');
+      return;
+    }
+    
+    // Pre-fill user data if logged in
+    if (user) {
+      // Force refresh user profile to get latest displayName
+      await user.reload();
+      const displayName = user.displayName || user.email?.split('@')[0] || '';
+      setBuyerEmail(user.email || '');
+      setBuyerName(displayName);
+    }
+    
+    setShowCheckoutModal(true);
+    setPurchaseError(null);
+    setPurchaseSuccess(false);
+  };
+
+  // Close modal and reset
+  const closeCheckout = () => {
+    setShowCheckoutModal(false);
+    setPurchaseError(null);
+    if (purchaseSuccess) {
+      setPurchaseSuccess(false);
+      setPurchasedTicket(null);
+    }
   };
 
   return (
@@ -758,18 +933,21 @@ export default function EventDetailsPage({ params }) {
 
                           {/* Total */}
                           <div className="pt-4 border-t border-gray-200">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-[#605B51]">Total</span>
-                          <span className="text-3xl font-bold text-[#2d2a28]">
-                            {event.ticketPrice === 0 ? 'Free' : `₦${totalPrice.toLocaleString()}`}
-                          </span>
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-[#605B51]">Total</span>
+                              <span className="text-3xl font-bold text-[#2d2a28]">
+                                {totalPrice === 0 ? 'Free' : `₦${totalPrice.toLocaleString()}`}
+                              </span>
+                            </div>
+                            <button
+                              onClick={openCheckout}
+                              className="w-full py-4 px-6 bg-gradient-to-r from-[#D8D365] to-[#a855f7] text-white font-bold text-lg rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                            >
+                              Get Tickets
+                            </button>
+                          </div>
                         </div>
-                        <Button variant="primary" fullWidth size="lg">
-                          Get Tickets
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                      )}
 
                   {!selectedTicket && (
                     <p className="text-center text-sm text-[#605B51] py-4">
@@ -865,6 +1043,156 @@ export default function EventDetailsPage({ params }) {
           </div>
         </div>
       </section>
+
+      {/* Checkout Modal */}
+      {showCheckoutModal && !purchaseSuccess && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+              {/* Close Button */}
+              <button
+                onClick={closeCheckout}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {/* Modal Header */}
+              <h3 className="font-roboto text-2xl font-bold text-[#2d2a28] mb-2">
+                Complete Your Purchase
+              </h3>
+              <p className="text-[#605B51] text-sm mb-6">
+                {selectedTicket && `${selectedTicket.type} - ₦${(selectedTicket.price * ticketQuantity).toLocaleString()}`}
+              </p>
+
+              {/* Purchase Form */}
+              <form onSubmit={handlePurchase} className="space-y-4">
+                {/* Name Field */}
+                <div>
+                  <label className="block text-sm font-medium text-[#2d2a28] mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={buyerName}
+                    onChange={(e) => setBuyerName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#a855f7] focus:border-transparent bg-white text-[#2d2a28] placeholder:text-gray-400"
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+
+                {/* Email Field */}
+                <div>
+                  <label className="block text-sm font-medium text-[#2d2a28] mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#a855f7] focus:border-transparent bg-white text-[#2d2a28] placeholder:text-gray-400"
+                    placeholder="john@example.com"
+                    required
+                  />
+                </div>
+
+                {/* Phone Field */}
+                <div>
+                  <label className="block text-sm font-medium text-[#2d2a28] mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    value={buyerPhone}
+                    onChange={(e) => setBuyerPhone(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#a855f7] focus:border-transparent bg-white text-[#2d2a28] placeholder:text-gray-400"
+                    placeholder="+234..."
+                    required
+                  />
+                </div>
+
+                {/* Error Display */}
+                {purchaseError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-600 text-sm">{purchaseError}</p>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={purchasing}
+                  className="w-full py-3 px-6 bg-gradient-to-r from-[#D8D365] to-[#a855f7] text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {purchasing ? 'Processing...' : `Pay ₦${selectedTicket ? (selectedTicket.price * ticketQuantity).toLocaleString() : '0'}`}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+      {/* Success Modal */}
+      {purchaseSuccess && purchasedTicket && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg max-w-md w-full p-8 text-center">
+              {/* Success Icon */}
+              <div className="mb-4 flex justify-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Success Message */}
+              <h3 className="font-roboto text-2xl font-bold text-[#2d2a28] mb-2">
+                Purchase Successful!
+              </h3>
+              <p className="text-[#605B51] mb-6">
+                Your ticket has been purchased successfully. Check your email for the QR code.
+              </p>
+
+              {/* Ticket Details */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-[#605B51]">Event</span>
+                    <span className="text-sm font-semibold text-[#2d2a28]">{event.title}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-[#605B51]">Ticket Type</span>
+                    <span className="text-sm font-semibold text-[#2d2a28]">{purchasedTicket.ticketType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-[#605B51]">Confirmation</span>
+                    <span className="text-sm font-mono text-[#2d2a28]">{purchasedTicket._id?.slice(-8)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    closeCheckout();
+                    window.location.href = '/dashboard';
+                  }}
+                  className="w-full py-3 px-6 bg-gradient-to-r from-[#D8D365] to-[#a855f7] text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                >
+                  View My Tickets
+                </button>
+                <button
+                  onClick={closeCheckout}
+                  className="w-full py-2 px-6 text-[#605B51] hover:text-[#2d2a28] transition-colors"
+                >
+                  Continue Browsing
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

@@ -94,6 +94,13 @@ const authenticate = async (req, res, next) => {
         name: decodedToken.name || decodedToken.email.split("@")[0],
         isEmailVerified: decodedToken.email_verified || false,
       });
+    } else {
+      // Only update user's name if Firebase has an actual displayName set
+      // Don't overwrite database name with email username fallback
+      if (decodedToken.name && user.name !== decodedToken.name) {
+        user.name = decodedToken.name;
+        await user.save();
+      }
     }
 
     // Update last login

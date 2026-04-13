@@ -12,6 +12,7 @@ export default function UserDashboard() {
   const router = useRouter();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [firebaseUser, setFirebaseUser] = useState(null);
   const [tickets, setTickets] = useState({ upcoming: [], past: [] });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -49,7 +50,13 @@ export default function UserDashboard() {
           throw new Error('No authenticated user found');
         }
         
-        const idToken = await currentUser.getIdToken();
+        // Store Firebase user for displayName access
+        setFirebaseUser(currentUser);
+        
+        // Force reload to get latest profile data from Firebase
+        await currentUser.reload();
+        
+        const idToken = await currentUser.getIdToken(true); // Force refresh token
 
         // Fetch user profile
         const profileRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
@@ -148,7 +155,7 @@ export default function UserDashboard() {
                 My Dashboard
               </h1>
               <p className="font-nunito text-[#605B51]">
-                Welcome back, {profile?.name || 'User'}!
+                Welcome back, {profile?.name || firebaseUser?.displayName || user?.name || 'User'}!
               </p>
             </div>
             <Link href="/events">
@@ -166,10 +173,10 @@ export default function UserDashboard() {
             <Card className="p-6">
               <div className="text-center">
                 <div className="w-24 h-24 bg-linear-to-br from-[#D8D365] to-[#a855f7] rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4">
-                  {profile?.name?.charAt(0) || 'U'}
+                  {(profile?.name || firebaseUser?.displayName || user?.name || 'U').charAt(0).toUpperCase()}
                 </div>
                 <h2 className="font-roboto text-xl font-semibold text-[#2d2a28] mb-1">
-                  {profile?.name}
+                  {profile?.name || firebaseUser?.displayName || user?.name || 'Guest User'}
                 </h2>
                 <p className="text-sm text-[#605B51] mb-4">{profile?.email}</p>
                 <Badge className="mb-4 capitalize">{profile?.role}</Badge>

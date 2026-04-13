@@ -63,7 +63,7 @@ exports.submitReview = async (req, res) => {
   try {
     const { eventId } = req.params;
     const { rating, comment } = req.body;
-    const userId = req.user._id;
+    const userId = req.user.id;
     const userName = req.user.name;
 
     // Validate input
@@ -156,7 +156,7 @@ exports.updateReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
     const { rating, comment } = req.body;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     // Find review
     const review = await Review.findById(reviewId);
@@ -217,7 +217,7 @@ exports.updateReview = async (req, res) => {
 exports.deleteReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     // Find review
     const review = await Review.findById(reviewId);

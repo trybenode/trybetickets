@@ -63,6 +63,11 @@ const ticketSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    paymentReference: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

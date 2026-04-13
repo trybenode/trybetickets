@@ -97,7 +97,7 @@ const purchaseTicket = async (req, res) => {
         $inc: { ticketsSold: 1 },
       },
       {
-        new: true,
+        returnDocument: 'after',
         session,
       }
     );
@@ -125,12 +125,17 @@ const purchaseTicket = async (req, res) => {
       userObjectId = userId;
     }
 
+    // Generate QR token manually for transaction
+    const crypto = require("crypto");
+    const qrToken = crypto.randomBytes(16).toString("hex");
+
     // Create ticket
     const ticket = await Ticket.create(
       [
         {
           eventId,
           userId: userObjectId,
+          qrToken,
           buyerName,
           buyerEmail,
           buyerPhone,

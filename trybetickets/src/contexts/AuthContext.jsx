@@ -17,7 +17,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  updateProfile
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -167,6 +168,12 @@ export function AuthProvider({ children }) {
     try {
       // Create user in Firebase
       const credential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Set display name in Firebase
+      await updateProfile(credential.user, {
+        displayName: userData.name
+      });
+      
       const idToken = await credential.user.getIdToken();
       
       // Sync user data with backend (creates user in MongoDB with additional info)
