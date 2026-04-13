@@ -308,6 +308,8 @@ export default function EventDetailsPage({ params }) {
             buyerEmail: buyerEmail.trim(),
             buyerPhone: buyerPhone.trim(),
             userId: user?.uid || null,
+            ticketTypeId: selectedTicket.id,
+            ticketQuantity,
           }),
         }
       );
@@ -350,7 +352,7 @@ export default function EventDetailsPage({ params }) {
           const handler = window.PaystackPop.setup({
             key: publicKey,
             email: buyerEmail.trim(),
-            amount: selectedTicket.price * 100,
+            amount: (data.data.amount || selectedTicket.price * ticketQuantity) * 100,
             ref: data.data.reference,
             metadata: {
               custom_fields: [
@@ -373,6 +375,21 @@ export default function EventDetailsPage({ params }) {
                   display_name: 'Ticket Type',
                   variable_name: 'ticket_type',
                   value: selectedTicket.type,
+                },
+                {
+                  display_name: 'Ticket Type ID',
+                  variable_name: 'ticket_type_id',
+                  value: selectedTicket.id,
+                },
+                {
+                  display_name: 'Ticket Quantity',
+                  variable_name: 'ticket_quantity',
+                  value: String(ticketQuantity),
+                },
+                {
+                  display_name: 'Ticket Unit Price',
+                  variable_name: 'ticket_unit_price',
+                  value: String(selectedTicket.price),
                 },
               ],
             },
@@ -1232,6 +1249,10 @@ export default function EventDetailsPage({ params }) {
                   <div className="flex justify-between">
                     <span className="text-sm text-[#605B51]">Ticket Type</span>
                     <span className="text-sm font-semibold text-[#2d2a28]">{purchasedTicket.ticketType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-[#605B51]">Quantity</span>
+                    <span className="text-sm font-semibold text-[#2d2a28]">{purchasedTicket.quantity || 1}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-[#605B51]">Confirmation</span>
