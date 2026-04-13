@@ -1,5 +1,5 @@
 const { Event, Ticket } = require('../models');
-const { initializePayment, verifyPayment } = require('../services/paystackService');
+const { verifyPayment } = require('../services/paystackService');
 const crypto = require('crypto');
 
 /**
@@ -53,48 +53,14 @@ const initializeTicketPayment = async (req, res) => {
       });
     }
 
-    // Generate unique payment reference and retry if Paystack reports duplicate reference
-    const createReference = () =>
-      `TRB-${event._id.toString().slice(-8)}-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
-
-    let paystackResponse;
-    let reference;
-    let lastDuplicateError = null;
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      reference = createReference();
-
-      try {
-        paystackResponse = await initializePayment({
-          email: buyerEmail,
-          amount: event.ticketPrice,
-          reference,
-          callback_url: `${process.env.FRONTEND_URL}/payment/verify`,
-          buyerName,
-          buyerPhone,
-          eventId: event._id.toString(),
-        });
-        break;
-      } catch (initError) {
-        if (/duplicate transaction reference/i.test(initError.message || '')) {
-          lastDuplicateError = initError;
-          continue;
-        }
-        throw initError;
-      }
-    }
-
-    if (!paystackResponse) {
-      throw lastDuplicateError || new Error('Unable to initialize payment. Please try again.');
-    }
+    // Generate unique payment reference for Paystack inline checkout
+    const reference = `TRB-${event._id.toString().slice(-8)}-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
 
     res.status(200).json({
       success: true,
       message: 'Payment initialized successfully',
       data: {
-        authorization_url: paystackResponse.data.authorization_url,
-        access_code: paystackResponse.data.access_code,
-        reference: paystackResponse.data.reference,
+        reference,
       },
     });
   } catch (error) {

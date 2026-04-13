@@ -352,6 +352,25 @@ export default function EventDetailsPage({ params }) {
             email: buyerEmail.trim(),
             amount: selectedTicket.price * 100,
             ref: data.data.reference,
+            metadata: {
+              custom_fields: [
+                {
+                  display_name: 'Buyer Name',
+                  variable_name: 'buyer_name',
+                  value: buyerName.trim(),
+                },
+                {
+                  display_name: 'Buyer Phone',
+                  variable_name: 'buyer_phone',
+                  value: buyerPhone.trim(),
+                },
+                {
+                  display_name: 'Event ID',
+                  variable_name: 'event_id',
+                  value: resolvedParams.id,
+                },
+              ],
+            },
             callback: (response) => {
               console.log('Payment successful, verifying...', response);
 
