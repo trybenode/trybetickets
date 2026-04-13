@@ -100,7 +100,8 @@ const verifyTicketPayment = async (req, res) => {
     const paymentData = await verifyPayment(reference);
 
     // Extract metadata
-    const metadata = paymentData.metadata.custom_fields.reduce((acc, field) => {
+    const customFields = paymentData?.metadata?.custom_fields || [];
+    const metadata = customFields.reduce((acc, field) => {
       acc[field.variable_name] = field.value;
       return acc;
     }, {});
@@ -108,6 +109,7 @@ const verifyTicketPayment = async (req, res) => {
     const eventId = metadata.event_id;
     const buyerName = metadata.buyer_name;
     const buyerPhone = metadata.buyer_phone;
+    const ticketType = metadata.ticket_type || 'General Admission';
     const buyerEmail = paymentData.customer.email;
 
     // Find event
@@ -168,6 +170,7 @@ const verifyTicketPayment = async (req, res) => {
           buyerName,
           buyerEmail,
           buyerPhone,
+          ticketType,
           amountPaid: paymentData.amount / 100, // Convert from kobo to naira
           status: 'valid',
           paymentReference: reference,

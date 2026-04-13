@@ -40,6 +40,11 @@ const ticketSchema = new mongoose.Schema(
       required: [true, "Buyer phone is required"],
       trim: true,
     },
+    ticketType: {
+      type: String,
+      default: "General Admission",
+      trim: true,
+    },
     status: {
       type: String,
       enum: ["valid", "used", "cancelled"],
