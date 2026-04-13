@@ -237,7 +237,10 @@ const verifyTicketPayment = async (req, res) => {
       paymentReference: reference,
     }));
 
-    const createdTickets = await Ticket.create(ticketsToCreate, { session });
+    // Debug: Log ticketsToCreate and options
+    console.log('ticketsToCreate:', Array.isArray(ticketsToCreate), ticketsToCreate.length, ticketsToCreate);
+    // Fix: Mongoose requires 'ordered: true' when using session and multiple docs (option order)
+    const createdTickets = await Ticket.create(ticketsToCreate, { ordered: true, session });
 
     // Commit transaction
     await session.commitTransaction();
@@ -266,7 +269,7 @@ const verifyTicketPayment = async (req, res) => {
       responseData.verificationURL = qrData.verificationURL;
 
       // Send confirmation email (non-blocking)
-      const { sendTicketEmail } = require('./emailService');
+      const { sendTicketEmail } = require('../services/emailService');
       sendTicketEmail(primaryTicket, primaryTicket.eventId, qrData.qrCodeDataURL)
         .then((result) => {
           if (result.success) {
