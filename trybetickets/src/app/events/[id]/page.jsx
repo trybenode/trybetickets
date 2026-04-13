@@ -321,80 +321,124 @@ export default function EventDetailsPage({ params }) {
         throw new Error(errorMessage);
       }
       
-      // Load Paystack inline script
-      const script = document.createElement('script');
-      script.src = 'https://js.paystack.co/v1/inline.js';
-      script.async = true;
-      document.body.appendChild(script);
+      console.log('Payment initialized:', data.data);
       
-      script.onload = () => {
-        // Initialize Paystack payment
-        const handler = window.PaystackPop.setup({
-          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
-          email: buyerEmail.trim(),
-          amount: selectedTicket.price * 100, // Amount in kobo
-          ref: data.data.reference,
-          callback: async (response) => {
-            // Payment successful - verify and create ticket
-            try {
-              const verifyResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/payments/verify`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    reference: response.reference,
-                  }),
-                }
-              );
-              
-              const verifyData = await verifyResponse.json();
-              
-              if (!verifyResponse.ok) {
-                throw new Error(verifyData.message || 'Payment verification failed');
-              }
-              
-              // Success!
-              setPurchasedTicket(verifyData.data);
-              setPurchaseSuccess(true);
-              
-              // Reset form
-              setBuyerName('');
-              setBuyerEmail('');
-              setBuyerPhone('');
-              setSelectedTicket(null);
-              setTicketQuantity(1);
-              
-              // Refresh event data
-              const eventResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${resolvedParams.id}`);
-              if (eventResponse.ok) {
-                const eventData = await eventResponse.json();
-                if (eventData.success) {
-                  setEvent(eventData.data);
-                }
-              }
-            } catch (err) {
-              console.error('Error verifying payment:', err);
-              setPurchaseError(err.message);
-            } finally {
-              setPurchasing(false);
-            }
-          },
-          onClose: () => {
-            setPurchasing(false);
-            setPurchaseError('Payment was cancelled');
-          },
-        });
-        
-        handler.openIframe();
-      };
+      // Verify public key is loaded
+      const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+      console.log('Public Key:', publicKey);
       
-      script.onerror = () => {
+      if (!publicKey) {
         setPurchasing(false);
-        setPurchaseError('Failed to load payment gateway');
+        setPurchaseError('Payment configuration error. Please contact support.');
+        console.error('NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is not defined');
+        return;
+      }
+      
+      // Function to open Paystack popup
+      const openPaystackPopup = () => {
+        if (!window.PaystackPop) {
+          console.error('PaystackPop not available');
+          setPurchasing(false);
+          setPurchaseError('Payment gateway not loaded');
+          return;
+        }
+
+        console.log('Paystack script loaded successfully');
+        console.log('Initializing payment popup...');
+
+        try {
+          const handler = window.PaystackPop.setup({
+            key: publicKey,
+            email: buyerEmail.trim(),
+            amount: selectedTicket.price * 100,
+            ref: data.data.reference,
+            callback: (response) => {
+              console.log('Payment successful, verifying...', response);
+
+              (async () => {
+                try {
+                  const verifyResponse = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/payments/verify`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        reference: response.reference,
+                      }),
+                    }
+                  );
+
+                  const verifyData = await verifyResponse.json();
+
+                  if (!verifyResponse.ok) {
+                    throw new Error(verifyData.message || 'Payment verification failed');
+                  }
+
+                  setPurchasedTicket(verifyData.data);
+                  setPurchaseSuccess(true);
+                  setBuyerName('');
+                  setBuyerEmail('');
+                  setBuyerPhone('');
+                  setSelectedTicket(null);
+                  setTicketQuantity(1);
+
+                  const eventResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${resolvedParams.id}`);
+                  if (eventResponse.ok) {
+                    const eventData = await eventResponse.json();
+                    if (eventData.success) {
+                      setEvent(eventData.data);
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error verifying payment:', err);
+                  setPurchaseError(err.message);
+                } finally {
+                  setPurchasing(false);
+                }
+              })();
+            },
+            onClose: () => {
+              setPurchasing(false);
+              setPurchaseError('Payment was cancelled');
+            },
+          });
+
+          handler.openIframe();
+          setPurchasing(false);
+        } catch (err) {
+          console.error('Failed to open Paystack popup:', err);
+          setPurchasing(false);
+          setPurchaseError('Unable to open payment popup. Please try again.');
+        }
       };
+      
+      // Check if Paystack script is already loaded
+      if (window.PaystackPop) {
+        openPaystackPopup();
+      } else {
+        // Load Paystack inline script
+        const existingScript = document.querySelector('script[src="https://js.paystack.co/v1/inline.js"]');
+        
+        if (existingScript) {
+          // Script tag exists, wait for it to load
+          existingScript.addEventListener('load', openPaystackPopup);
+        } else {
+          // Load fresh script
+          const script = document.createElement('script');
+          script.src = 'https://js.paystack.co/v1/inline.js';
+          script.async = true;
+          document.body.appendChild(script);
+          
+          script.onload = openPaystackPopup;
+          
+          script.onerror = () => {
+            setPurchasing(false);
+            setPurchaseError('Failed to load payment gateway');
+          };
+        }
+      }
       
     } catch (err) {
       console.error('Error initializing payment:', err);

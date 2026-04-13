@@ -53,19 +53,40 @@ const initializeTicketPayment = async (req, res) => {
       });
     }
 
-    // Generate unique payment reference
-    const reference = `TRB-${event._id.toString().slice(-8)}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    // Generate unique payment reference and retry if Paystack reports duplicate reference
+    const createReference = () =>
+      `TRB-${event._id.toString().slice(-8)}-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
 
-    // Initialize Paystack payment
-    const paystackResponse = await initializePayment({
-      email: buyerEmail,
-      amount: event.ticketPrice,
-      reference,
-      callback_url: `${process.env.FRONTEND_URL}/payment/verify`,
-      buyerName,
-      buyerPhone,
-      eventId: event._id.toString(),
-    });
+    let paystackResponse;
+    let reference;
+    let lastDuplicateError = null;
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      reference = createReference();
+
+      try {
+        paystackResponse = await initializePayment({
+          email: buyerEmail,
+          amount: event.ticketPrice,
+          reference,
+          callback_url: `${process.env.FRONTEND_URL}/payment/verify`,
+          buyerName,
+          buyerPhone,
+          eventId: event._id.toString(),
+        });
+        break;
+      } catch (initError) {
+        if (/duplicate transaction reference/i.test(initError.message || '')) {
+          lastDuplicateError = initError;
+          continue;
+        }
+        throw initError;
+      }
+    }
+
+    if (!paystackResponse) {
+      throw lastDuplicateError || new Error('Unable to initialize payment. Please try again.');
+    }
 
     res.status(200).json({
       success: true,
@@ -95,6 +116,7 @@ const verifyTicketPayment = async (req, res) => {
   const mongoose = require('mongoose');
   const session = await mongoose.startSession();
   session.startTransaction();
+  let transactionCommitted = false;
 
   try {
     const { reference } = req.body;
@@ -190,40 +212,56 @@ const verifyTicketPayment = async (req, res) => {
 
     // Commit transaction
     await session.commitTransaction();
+    transactionCommitted = true;
     session.endSession();
 
     // Populate event details
     const populatedTicket = await Ticket.findById(ticket[0]._id).populate('eventId');
 
-    // Generate QR code
-    const { generateTicketQR } = require('../utils/qrGenerator');
-    const qrData = await generateTicketQR(populatedTicket);
+    // Prepare response payload with safe fallbacks for post-commit tasks
+    const responseData = {
+      ...populatedTicket.toObject(),
+      qrCode: null,
+      verificationURL: null,
+    };
 
-    // Send confirmation email (non-blocking)
-    const { sendTicketEmail } = require('./emailService');
-    sendTicketEmail(populatedTicket, populatedTicket.eventId, qrData.qrCodeDataURL)
-      .then((result) => {
-        if (result.success) {
-          console.log(`✅ Ticket email sent to ${populatedTicket.buyerEmail}`);
-        } else {
-          console.warn(`⚠️  Failed to send ticket email: ${result.error}`);
-        }
-      })
-      .catch((error) => {
-        console.error(`❌ Error sending ticket email:`, error.message);
-      });
+    try {
+      // Generate QR code
+      const { generateTicketQR } = require('../utils/qrGenerator');
+      const qrData = await generateTicketQR(populatedTicket);
+      responseData.qrCode = qrData.qrCodeDataURL;
+      responseData.verificationURL = qrData.verificationURL;
+
+      // Send confirmation email (non-blocking)
+      const { sendTicketEmail } = require('./emailService');
+      sendTicketEmail(populatedTicket, populatedTicket.eventId, qrData.qrCodeDataURL)
+        .then((result) => {
+          if (result.success) {
+            console.log(`✅ Ticket email sent to ${populatedTicket.buyerEmail}`);
+          } else {
+            console.warn(`⚠️  Failed to send ticket email: ${result.error}`);
+          }
+        })
+        .catch((error) => {
+          console.error(`❌ Error sending ticket email:`, error.message);
+        });
+    } catch (postCommitError) {
+      console.error('Post-commit processing error:', postCommitError.message);
+    }
 
     res.status(201).json({
       success: true,
       message: 'Payment verified and ticket created successfully',
-      data: {
-        ...populatedTicket.toObject(),
-        qrCode: qrData.qrCodeDataURL,
-        verificationURL: qrData.verificationURL,
-      },
+      data: responseData,
     });
   } catch (error) {
-    await session.abortTransaction();
+    if (!transactionCommitted) {
+      try {
+        await session.abortTransaction();
+      } catch (abortError) {
+        console.warn('Transaction abort skipped:', abortError.message);
+      }
+    }
     session.endSession();
 
     console.error('Error verifying payment:', error);
