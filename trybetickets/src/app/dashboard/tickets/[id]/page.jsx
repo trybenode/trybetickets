@@ -233,20 +233,22 @@ export default function EventTicketsPage() {
           </Link>
         </div>
 
-        <Card className="p-6 mb-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
+        <Card className="p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
               <Badge className="capitalize mb-2">{event.category || 'Event'}</Badge>
-              <h1 className="font-roboto text-3xl font-bold text-[#2d2a28] mb-2">{event.title}</h1>
-              <p className="text-[#605B51]">
+              <h1 className="font-roboto text-2xl sm:text-3xl font-bold text-[#2d2a28] mb-2 break-words">{event.title}</h1>
+              <p className="text-[#605B51] text-sm sm:text-base">
                 {event.date ? `${formatDate(event.date)} at ${formatTime(event.date)}` : 'Date TBD'} • {event.venue || 'Venue TBD'}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-[#605B51]">Tickets</p>
-              <p className="text-2xl font-bold text-[#2d2a28]">{tickets.length}</p>
-              <p className="text-sm text-[#605B51] mt-1">Valid: {totals.validCount}</p>
-              <p className="text-lg font-bold text-[#a855f7] mt-2">₦{totals.totalSpent.toLocaleString()}</p>
+            <div className="flex flex-row sm:flex-col items-center sm:items-end gap-4 sm:gap-0 mt-4 sm:mt-0">
+              <div className="text-center sm:text-right">
+                <p className="text-xs sm:text-sm text-[#605B51]">Tickets</p>
+                <p className="text-xl sm:text-2xl font-bold text-[#2d2a28]">{tickets.length}</p>
+                <p className="text-xs sm:text-sm text-[#605B51] mt-1">Valid: {totals.validCount}</p>
+                <p className="text-base sm:text-lg font-bold text-[#a855f7] mt-2">₦{totals.totalSpent.toLocaleString()}</p>
+              </div>
             </div>
           </div>
         </Card>
