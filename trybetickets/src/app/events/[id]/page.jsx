@@ -68,16 +68,18 @@ export default function EventDetailsPage({ params }) {
     });
   };
 
-  const getEventCategory = (title) => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('music') || lowerTitle.includes('concert') || lowerTitle.includes('festival')) return 'Music';
-    if (lowerTitle.includes('tech') || lowerTitle.includes('startup') || lowerTitle.includes('ai')) return 'Technology';
-    if (lowerTitle.includes('art') || lowerTitle.includes('gallery') || lowerTitle.includes('exhibition')) return 'Arts';
-    if (lowerTitle.includes('food') || lowerTitle.includes('wine') || lowerTitle.includes('culinary')) return 'Food & Drink';
-    if (lowerTitle.includes('sport') || lowerTitle.includes('game') || lowerTitle.includes('match')) return 'Sports';
-    if (lowerTitle.includes('workshop') || lowerTitle.includes('seminar') || lowerTitle.includes('course')) return 'Education';
-    if (lowerTitle.includes('community') || lowerTitle.includes('charity') || lowerTitle.includes('volunteer')) return 'Community';
-    return 'Entertainment';
+  const getTicketTypes = () => {
+    if (event.ticketTypes && event.ticketTypes.length > 0) {
+      return event.ticketTypes;
+    }
+    // Fallback for events without ticketTypes array
+    return [{
+      _id: 'default',
+      name: 'General Admission',
+      price: event.ticketPrice || 0,
+      quantity: event.totalTickets || 0,
+      sold: event.ticketsSold || 0
+    }];
   };
 
   // Loading state
@@ -134,8 +136,8 @@ export default function EventDetailsPage({ params }) {
         <div className="relative z-10 max-w-7xl mx-auto px-6 h-full flex items-end pb-12">
           <div className="w-full">
             <div className="flex items-center gap-3 mb-4">
-              <Badge className="bg-[#E6F082] text-[#2d2a28] border-none">
-                {getEventCategory(event.title)}
+              <Badge className="bg-[#E6F082] text-[#2d2a28] border-none capitalize">
+                {event.category || 'Event'}
               </Badge>
               <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
                 {event.ticketsSold} Tickets Sold
@@ -274,17 +276,39 @@ export default function EventDetailsPage({ params }) {
                       </h3>
                       <p className="text-[#605B51]">Event venue location</p>
                     </div>
-                    {/* Map Placeholder */}
-                    <div className="w-full h-64 bg-linear-to-br from-[#D8D365] to-[#a855f7] rounded-lg flex items-center justify-center">
-                      <span className="text-white font-semibold">Map View</span>
+                    {/* Google Maps Embed */}
+                    <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-200">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&q=${encodeURIComponent(event.venue)}`}
+                      ></iframe>
                     </div>
                     <div className="mt-4 flex gap-3">
-                      <Button variant="outline" fullWidth>
-                        Get Directions
-                      </Button>
-                      <Button variant="outline" fullWidth>
-                        View in Maps
-                      </Button>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.venue)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1"
+                      >
+                        <Button variant="outline" fullWidth>
+                          Get Directions
+                        </Button>
+                      </a>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1"
+                      >
+                        <Button variant="outline" fullWidth>
+                          View in Maps
+                        </Button>
+                      </a>
                     </div>
                   </Card>
                 </div>
@@ -354,45 +378,73 @@ export default function EventDetailsPage({ params }) {
                   {availableTickets > 0 ? (
                     <>
                       <div className="space-y-4 mb-6">
-                        <div
-                          onClick={() => setSelectedTicket({ id: 1, type: 'General Admission', price: event.ticketPrice })}
-                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                            selectedTicket
-                              ? 'border-[#a855f7] bg-[#a855f7]/5'
-                              : 'border-gray-200 hover:border-[#a855f7]/50'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h4 className="font-roboto font-semibold text-[#2d2a28]">
-                                General Admission
-                              </h4>
-                              <p className="text-2xl font-bold text-[#a855f7] mt-1">
-                                {event.ticketPrice === 0 ? 'Free' : `₦${event.ticketPrice.toLocaleString()}`}
-                              </p>
+                        {getTicketTypes().map((ticketType) => {
+                          const ticketAvailable = (ticketType.quantity || 0) - (ticketType.sold || 0);
+                          const isSelected = selectedTicket?.id === ticketType._id;
+                          
+                          if (ticketAvailable <= 0) return null;
+                          
+                          return (
+                            <div
+                              key={ticketType._id}
+                              onClick={() => setSelectedTicket({ 
+                                id: ticketType._id, 
+                                type: ticketType.name, 
+                                price: ticketType.price,
+                                available: ticketAvailable
+                              })}
+                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-[#a855f7] bg-[#a855f7]/5'
+                                  : 'border-gray-200 hover:border-[#a855f7]/50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <h4 className="font-roboto font-semibold text-[#2d2a28]">
+                                    {ticketType.name}
+                                  </h4>
+                                  <p className="text-2xl font-bold text-[#a855f7] mt-1">
+                                    {ticketType.price === 0 ? 'Free' : `₦${ticketType.price.toLocaleString()}`}
+                                  </p>
+                                </div>
+                                <input
+                                  type="radio"
+                                  checked={isSelected}
+                                  onChange={() => setSelectedTicket({ 
+                                    id: ticketType._id, 
+                                    type: ticketType.name, 
+                                    price: ticketType.price,
+                                    available: ticketAvailable
+                                  })}
+                                  className="w-5 h-5 text-[#a855f7] border-gray-300 focus:ring-[#a855f7] cursor-pointer"
+                                />
+                              </div>
+                              <div className="mt-3">
+                                <div className="flex items-center text-xs text-[#605B51] mb-2">
+                                  <svg className="w-4 h-4 mr-2 text-[#a855f7] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  Access to event
+                                </div>
+                                <div className="flex items-center text-xs text-[#605B51]">
+                                  <svg className="w-4 h-4 mr-2 text-[#a855f7] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                                  </svg>
+                                  {ticketAvailable} tickets available
+                                </div>
+                                {ticketType.sold > 0 && (
+                                  <div className="flex items-center text-xs text-green-600 mt-1">
+                                    <svg className="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {ticketType.sold} already sold
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <input
-                              type="radio"
-                              checked={!!selectedTicket}
-                              onChange={() => setSelectedTicket({ id: 1, type: 'General Admission', price: event.ticketPrice })}
-                              className="w-5 h-5 text-[#a855f7] border-gray-300 focus:ring-[#a855f7] cursor-pointer"
-                            />
-                          </div>
-                          <div className="mt-3">
-                            <div className="flex items-center text-xs text-[#605B51] mb-2">
-                              <svg className="w-4 h-4 mr-2 text-[#a855f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Access to event
-                            </div>
-                            <div className="flex items-center text-xs text-[#605B51]">
-                              <svg className="w-4 h-4 mr-2 text-[#a855f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              {availableTickets} tickets available
-                            </div>
-                          </div>
-                        </div>
+                          );
+                        })}
                       </div>
 
                       {selectedTicket && (
@@ -412,13 +464,13 @@ export default function EventDetailsPage({ params }) {
                               <input
                                 type="number"
                                 value={ticketQuantity}
-                                onChange={(e) => setTicketQuantity(Math.max(1, Math.min(availableTickets, parseInt(e.target.value) || 1)))}
-                                max={availableTickets}
+                                onChange={(e) => setTicketQuantity(Math.max(1, Math.min(selectedTicket.available || availableTickets, parseInt(e.target.value) || 1)))}
+                                max={selectedTicket.available || availableTickets}
                                 className="w-16 h-10 text-center border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a855f7] focus:border-transparent text-[#2d2a28] font-semibold"
                               />
                               <button
-                                onClick={() => setTicketQuantity(Math.min(availableTickets, ticketQuantity + 1))}
-                                disabled={ticketQuantity >= availableTickets}
+                                onClick={() => setTicketQuantity(Math.min(selectedTicket.available || availableTickets, ticketQuantity + 1))}
+                                disabled={ticketQuantity >= (selectedTicket.available || availableTickets)}
                                 className="w-10 h-10 border-2 border-gray-300 rounded-lg hover:border-[#a855f7] text-[#2d2a28] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 +
