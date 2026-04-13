@@ -9,7 +9,7 @@ const crypto = require('crypto');
  */
 const initializeTicketPayment = async (req, res) => {
   try {
-    const { eventId, buyerName, buyerEmail, buyerPhone, userId } = req.body;
+    const { eventId, buyerName, buyerEmail, buyerPhone, userId, ticketTypeId, ticketQuantity } = req.body;
 
     // Validate required fields
     if (!eventId || !buyerName || !buyerEmail || !buyerPhone) {
@@ -46,11 +46,34 @@ const initializeTicketPayment = async (req, res) => {
     }
 
     // Check availability
-    if (event.ticketsSold >= event.totalTickets) {
+    const quantity = Math.max(1, parseInt(ticketQuantity, 10) || 1);
+    if (event.ticketsSold + quantity > event.totalTickets) {
       return res.status(400).json({
         success: false,
         message: 'Sorry, this event is sold out',
       });
+    }
+
+    let selectedTicketType = null;
+    let unitPrice = event.ticketPrice;
+
+    if (ticketTypeId && event.ticketTypes?.length) {
+      selectedTicketType = event.ticketTypes.id(ticketTypeId);
+      if (!selectedTicketType) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected ticket type not found',
+        });
+      }
+
+      if ((selectedTicketType.sold || 0) + quantity > (selectedTicketType.quantity || 0)) {
+        return res.status(400).json({
+          success: false,
+          message: `Only ${(selectedTicketType.quantity || 0) - (selectedTicketType.sold || 0)} tickets left for ${selectedTicketType.name}`,
+        });
+      }
+
+      unitPrice = selectedTicketType.price;
     }
 
     // Generate unique payment reference for Paystack inline checkout
@@ -61,6 +84,9 @@ const initializeTicketPayment = async (req, res) => {
       message: 'Payment initialized successfully',
       data: {
         reference,
+        quantity,
+        unitPrice,
+        amount: unitPrice * quantity,
       },
     });
   } catch (error) {
@@ -110,6 +136,9 @@ const verifyTicketPayment = async (req, res) => {
     const buyerName = metadata.buyer_name;
     const buyerPhone = metadata.buyer_phone;
     const ticketType = metadata.ticket_type || 'General Admission';
+    const ticketTypeId = metadata.ticket_type_id || null;
+    const quantity = Math.max(1, parseInt(metadata.ticket_quantity, 10) || 1);
+    const unitPrice = Number(metadata.ticket_unit_price || 0);
     const buyerEmail = paymentData.customer.email;
 
     // Find event
@@ -124,7 +153,7 @@ const verifyTicketPayment = async (req, res) => {
     }
 
     // Check availability again
-    if (event.ticketsSold >= event.totalTickets) {
+    if (event.ticketsSold + quantity > event.totalTickets) {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
@@ -133,20 +162,58 @@ const verifyTicketPayment = async (req, res) => {
       });
     }
 
-    // Update tickets sold
-    const updatedEvent = await Event.findOneAndUpdate(
-      {
-        _id: eventId,
-        ticketsSold: { $lt: event.totalTickets },
-      },
-      {
-        $inc: { ticketsSold: 1 },
-      },
-      {
-        returnDocument: 'after',
-        session,
+    let selectedTicketType = null;
+    if (ticketTypeId && event.ticketTypes?.length) {
+      selectedTicketType = event.ticketTypes.id(ticketTypeId);
+      if (!selectedTicketType) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: 'Selected ticket type not found',
+        });
       }
-    );
+
+      if ((selectedTicketType.sold || 0) + quantity > (selectedTicketType.quantity || 0)) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: `Only ${(selectedTicketType.quantity || 0) - (selectedTicketType.sold || 0)} tickets left for ${selectedTicketType.name}`,
+        });
+      }
+    }
+
+    const expectedAmount = (unitPrice || event.ticketPrice) * quantity;
+    if (Number(paymentData.amount || 0) / 100 < expectedAmount) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Payment amount does not match expected ticket total',
+      });
+    }
+
+    // Update tickets sold
+    const eventUpdateQuery = {
+      _id: eventId,
+      ticketsSold: { $lte: event.totalTickets - quantity },
+    };
+
+    const eventUpdateDoc = {
+      $inc: { ticketsSold: quantity },
+    };
+
+    if (selectedTicketType) {
+      eventUpdateQuery['ticketTypes._id'] = selectedTicketType._id;
+      eventUpdateQuery['ticketTypes.sold'] = { $lte: selectedTicketType.quantity - quantity };
+      eventUpdateDoc.$inc['ticketTypes.$.sold'] = quantity;
+    }
+
+    const updatedEvent = await Event.findOneAndUpdate(eventUpdateQuery, eventUpdateDoc, {
+      returnDocument: 'after',
+      session,
+    });
 
     if (!updatedEvent) {
       await session.abortTransaction();
@@ -157,27 +224,20 @@ const verifyTicketPayment = async (req, res) => {
       });
     }
 
-    // Generate QR token
-    const qrToken = crypto.randomBytes(16).toString('hex');
+    const ticketsToCreate = Array.from({ length: quantity }).map(() => ({
+      eventId,
+      userId: null,
+      qrToken: crypto.randomBytes(16).toString('hex'),
+      buyerName,
+      buyerEmail,
+      buyerPhone,
+      ticketType,
+      amountPaid: unitPrice || event.ticketPrice,
+      status: 'valid',
+      paymentReference: reference,
+    }));
 
-    // Create ticket
-    const ticket = await Ticket.create(
-      [
-        {
-          eventId,
-          userId: null, // Will be linked when user logs in
-          qrToken,
-          buyerName,
-          buyerEmail,
-          buyerPhone,
-          ticketType,
-          amountPaid: paymentData.amount / 100, // Convert from kobo to naira
-          status: 'valid',
-          paymentReference: reference,
-        },
-      ],
-      { session }
-    );
+    const createdTickets = await Ticket.create(ticketsToCreate, { session });
 
     // Commit transaction
     await session.commitTransaction();
@@ -185,11 +245,15 @@ const verifyTicketPayment = async (req, res) => {
     session.endSession();
 
     // Populate event details
-    const populatedTicket = await Ticket.findById(ticket[0]._id).populate('eventId');
+    const createdTicketIds = createdTickets.map((ticket) => ticket._id);
+    const populatedTickets = await Ticket.find({ _id: { $in: createdTicketIds } }).populate('eventId');
+    const primaryTicket = populatedTickets[0];
 
     // Prepare response payload with safe fallbacks for post-commit tasks
     const responseData = {
-      ...populatedTicket.toObject(),
+      ...primaryTicket.toObject(),
+      quantity,
+      tickets: populatedTickets.map((ticket) => ticket.toObject()),
       qrCode: null,
       verificationURL: null,
     };
@@ -197,16 +261,16 @@ const verifyTicketPayment = async (req, res) => {
     try {
       // Generate QR code
       const { generateTicketQR } = require('../utils/qrGenerator');
-      const qrData = await generateTicketQR(populatedTicket);
+      const qrData = await generateTicketQR(primaryTicket);
       responseData.qrCode = qrData.qrCodeDataURL;
       responseData.verificationURL = qrData.verificationURL;
 
       // Send confirmation email (non-blocking)
       const { sendTicketEmail } = require('./emailService');
-      sendTicketEmail(populatedTicket, populatedTicket.eventId, qrData.qrCodeDataURL)
+      sendTicketEmail(primaryTicket, primaryTicket.eventId, qrData.qrCodeDataURL)
         .then((result) => {
           if (result.success) {
-            console.log(`✅ Ticket email sent to ${populatedTicket.buyerEmail}`);
+            console.log(`✅ Ticket email sent to ${primaryTicket.buyerEmail}`);
           } else {
             console.warn(`⚠️  Failed to send ticket email: ${result.error}`);
           }
