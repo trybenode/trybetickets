@@ -1,8 +1,49 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 
 export default function Home() {
+  const [featuredEvents, setFeaturedEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState(null);
+
+  // Fetch featured events
+  useEffect(() => {
+    const fetchFeaturedEvents = async () => {
+      try {
+        setLoadingEvents(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events?status=active&limit=3`);
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Failed to fetch events');
+        }
+
+        if (result.success) {
+          setFeaturedEvents(result.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching featured events:', err);
+        setEventsError(err.message);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    fetchFeaturedEvents();
+  }, []);
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -178,79 +219,113 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { 
-                title: 'Summer Music Festival 2026', 
-                date: 'July 15, 2026', 
-                location: 'Central Park, NY',
-                price: '$49.99',
-                category: 'Music',
-                attending: '2.5K'
-              },
-              { 
-                title: 'Tech Innovation Summit', 
-                date: 'August 20, 2026', 
-                location: 'Convention Center, SF',
-                price: '$199.99',
-                category: 'Conference',
-                attending: '1.2K'
-              },
-              { 
-                title: 'Contemporary Art Expo', 
-                date: 'September 10, 2026', 
-                location: 'Art Gallery, LA',
-                price: '$29.99',
-                category: 'Art',
-                attending: '850'
-              },
-            ].map((event, i) => (
-              <Card key={i} hover padding="none">
-                <div className="h-48 bg-linear-to-br from-[#fbeb78] to-[#a855f7] relative">
-                  <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-[#2d2a28]">
-                    {event.category}
-                  </div>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-[#2d2a28] mb-3">
-                    {event.title}
-                  </h3>
-                  
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-[#605B51] text-sm">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {event.date}
+          {/* Loading Skeleton */}
+          {loadingEvents && (
+            <div className="grid md:grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} padding="none" className="animate-pulse">
+                  <div className="h-48 bg-gray-300"></div>
+                  <div className="p-6">
+                    <div className="h-6 bg-gray-300 rounded mb-4 w-3/4"></div>
+                    <div className="space-y-3 mb-4">
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                      <div className="h-4 bg-gray-200 rounded w-4/6"></div>
                     </div>
-                    <div className="flex items-center gap-2 text-[#605B51] text-sm">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      {event.location}
-                    </div>
-                    <div className="flex items-center gap-2 text-[#605B51] text-sm">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      {event.attending} attending
+                    <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                      <div className="h-8 bg-gray-300 rounded w-20"></div>
+                      <div className="h-10 bg-gray-300 rounded w-28"></div>
                     </div>
                   </div>
+                </Card>
+              ))}
+            </div>
+          )}
 
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                    <div>
-                      <div className="text-sm text-[#605B51]">From</div>
-                      <div className="text-2xl font-bold text-[#D8D365]">{event.price}</div>
+          {/* Error State */}
+          {!loadingEvents && eventsError && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-xl font-semibold text-[#2d2a28] mb-2">
+                Unable to Load Events
+              </h3>
+              <p className="text-[#605B51]">{eventsError}</p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loadingEvents && !eventsError && featuredEvents.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">📅</div>
+              <h3 className="text-xl font-semibold text-[#2d2a28] mb-2">
+                No Events Available
+              </h3>
+              <p className="text-[#605B51] mb-6">
+                Check back soon for exciting upcoming events!
+              </p>
+              <Link href="/dashboard/organizer">
+                <Button variant="primary">
+                  Create an Event
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Events Grid */}
+          {!loadingEvents && !eventsError && featuredEvents.length > 0 && (
+            <div className="grid md:grid-cols-3 gap-8">
+              {featuredEvents.map((event) => (
+                <Card key={event._id} hover padding="none">
+                  <div className="h-48 bg-gradient-to-br from-[#fbeb78] to-[#a855f7] relative">
+                    <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-[#2d2a28] capitalize">
+                      {event.category || 'Event'}
                     </div>
-                    <Button variant="primary" size="sm">
-                      Get Tickets
-                    </Button>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-[#2d2a28] mb-3 line-clamp-2">
+                      {event.title}
+                    </h3>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-[#605B51] text-sm">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {formatDate(event.date)}
+                      </div>
+                      <div className="flex items-center gap-2 text-[#605B51] text-sm">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="line-clamp-1">{event.venue}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[#605B51] text-sm">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        {event.ticketsSold || 0} / {event.totalTickets || 0} tickets
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                      <div>
+                        <div className="text-sm text-[#605B51]">From</div>
+                        <div className="text-2xl font-bold text-[#D8D365]">
+                          ₦{(event.ticketPrice || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <Link href={`/events/${event._id}`}>
+                        <Button variant="primary" size="sm">
+                          Get Tickets
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

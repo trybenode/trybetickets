@@ -70,11 +70,10 @@ const ticketSchema = new mongoose.Schema(
 );
 
 // Generate unique QR token before saving
-ticketSchema.pre("save", function (next) {
+ticketSchema.pre("save", async function () {
   if (!this.qrToken) {
     this.qrToken = crypto.randomBytes(16).toString("hex");
   }
-  next();
 });
 
 // Compound index for efficient queries
