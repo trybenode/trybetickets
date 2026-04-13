@@ -369,6 +369,11 @@ export default function EventDetailsPage({ params }) {
                   variable_name: 'event_id',
                   value: resolvedParams.id,
                 },
+                {
+                  display_name: 'Ticket Type',
+                  variable_name: 'ticket_type',
+                  value: selectedTicket.type,
+                },
               ],
             },
             callback: (response) => {

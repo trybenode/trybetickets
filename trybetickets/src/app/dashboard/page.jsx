@@ -127,6 +127,32 @@ export default function UserDashboard() {
     return colors[status] || colors.confirmed;
   };
 
+  const groupTicketsByEvent = (ticketList = []) => {
+    const grouped = ticketList.reduce((acc, ticket) => {
+      const eventId = ticket.eventId?._id;
+      if (!eventId) return acc;
+
+      if (!acc[eventId]) {
+        acc[eventId] = {
+          eventId,
+          event: ticket.eventId,
+          tickets: [],
+          totalSpent: 0,
+        };
+      }
+
+      acc[eventId].tickets.push(ticket);
+      acc[eventId].totalSpent += ticket.amountPaid || 0;
+      return acc;
+    }, {});
+
+    return Object.values(grouped);
+  };
+
+  const groupedUpcoming = groupTicketsByEvent(tickets.upcoming);
+  const groupedPast = groupTicketsByEvent(tickets.past);
+  const currentGroups = activeTab === 'upcoming' ? groupedUpcoming : groupedPast;
+
   // Show loading while checking authentication or fetching data
   if (authLoading || loading) {
     return (
@@ -197,16 +223,16 @@ export default function UserDashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#605B51]">Upcoming Events</span>
-                  <span className="font-bold text-[#a855f7]">{tickets.upcoming.length}</span>
+                  <span className="font-bold text-[#a855f7]">{groupedUpcoming.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#605B51]">Past Events</span>
-                  <span className="font-bold text-[#605B51]">{tickets.past.length}</span>
+                  <span className="font-bold text-[#605B51]">{groupedPast.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#605B51]">Total Tickets</span>
+                  <span className="text-sm text-[#605B51]">Total Events</span>
                   <span className="font-bold text-[#2d2a28]">
-                    {tickets.upcoming.length + tickets.past.length}
+                    {groupedUpcoming.length + groupedPast.length}
                   </span>
                 </div>
                 <div className="pt-4 border-t border-gray-200">
@@ -237,7 +263,7 @@ export default function UserDashboard() {
                         : 'text-[#605B51] hover:text-[#2d2a28]'
                     }`}
                   >
-                    Upcoming Events ({tickets.upcoming.length})
+                    Upcoming Events ({groupedUpcoming.length})
                     {activeTab === 'upcoming' && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#a855f7]" />
                     )}
@@ -250,7 +276,7 @@ export default function UserDashboard() {
                         : 'text-[#605B51] hover:text-[#2d2a28]'
                     }`}
                   >
-                    Past Events ({tickets.past.length})
+                    Past Events ({groupedPast.length})
                     {activeTab === 'past' && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#a855f7]" />
                     )}
@@ -260,7 +286,7 @@ export default function UserDashboard() {
 
               {/* Ticket List */}
               <div className="space-y-4">
-                {(activeTab === 'upcoming' ? tickets.upcoming : tickets.past).length === 0 ? (
+                {currentGroups.length === 0 ? (
                   <div className="text-center py-12">
                     <svg
                       className="w-16 h-16 mx-auto mb-4 text-gray-300"
@@ -290,22 +316,22 @@ export default function UserDashboard() {
                     )}
                   </div>
                 ) : (
-                  (activeTab === 'upcoming' ? tickets.upcoming : tickets.past).map((ticket) => (
+                  currentGroups.map((group) => (
                     <div
-                      key={ticket._id}
+                      key={group.eventId}
                       className="border-2 border-gray-200 rounded-lg p-5 hover:border-[#a855f7] transition-all"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <Badge className="text-xs capitalize">{ticket.eventId?.category || 'Event'}</Badge>
-                            <span className={`text-xs px-3 py-1 rounded-full border capitalize ${getStatusColor(ticket.status)}`}>
-                              {ticket.status}
+                            <Badge className="text-xs capitalize">{group.event?.category || 'Event'}</Badge>
+                            <span className="text-xs px-3 py-1 rounded-full border bg-[#a855f7]/10 text-[#a855f7] border-[#a855f7]/20">
+                              {group.tickets.length} {group.tickets.length === 1 ? 'ticket' : 'tickets'}
                             </span>
                           </div>
-                          <Link href={`/events/${ticket.eventId?._id}`}>
+                          <Link href={`/events/${group.event?._id}`}>
                             <h3 className="font-roboto text-lg font-semibold text-[#2d2a28] hover:text-[#a855f7] transition-colors mb-2">
-                              {ticket.eventId?.title || 'Unknown Event'}
+                              {group.event?.title || 'Unknown Event'}
                             </h3>
                           </Link>
                           <div className="space-y-1.5">
@@ -313,42 +339,42 @@ export default function UserDashboard() {
                               <svg className="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                              {ticket.eventId?.date ? `${formatDate(ticket.eventId.date)} at ${formatTime(ticket.eventId.date)}` : 'Date TBD'}
+                              {group.event?.date ? `${formatDate(group.event.date)} at ${formatTime(group.event.date)}` : 'Date TBD'}
                             </div>
                             <div className="flex items-center text-sm text-[#605B51]">
                               <svg className="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
-                              {ticket.eventId?.venue || 'Venue TBD'}
+                              {group.event?.venue || 'Venue TBD'}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-[#a855f7]">₦{(ticket.amountPaid || 0).toLocaleString()}</p>
-                          <p className="text-xs text-[#605B51] mt-1">{ticket.buyerName}</p>
+                          <p className="text-2xl font-bold text-[#a855f7]">₦{group.totalSpent.toLocaleString()}</p>
+                          <p className="text-xs text-[#605B51] mt-1">{group.tickets[0]?.buyerName}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                         <div className="text-xs text-[#605B51]">
-                          QR: <span className="font-mono font-semibold">{ticket.qrToken?.substring(0, 8)}...</span>
+                          Latest Ticket: <span className="font-mono font-semibold">{group.tickets[0]?.qrToken?.substring(0, 8)}...</span>
                         </div>
                         <div className="flex gap-2">
-                          <Link href={`/dashboard/tickets/${ticket._id}`}>
+                          <Link href={`/dashboard/tickets/${group.eventId}`}>
                             <Button variant="outline" size="sm">
-                              View Ticket
+                              View Tickets
                             </Button>
                           </Link>
-                          {ticket.status === 'valid' && (
+                          {group.tickets.some((t) => t.status === 'valid') && (
                             <a
-                              href={`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${ticket._id}/qr`}
-                              download={`ticket-${ticket.qrToken}.png`}
+                              href={`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${group.tickets.find((t) => t.status === 'valid')._id}/qr`}
+                              download={`ticket-${group.tickets.find((t) => t.status === 'valid').qrToken}.png`}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
                               <Button variant="primary" size="sm">
-                                Download QR
+                                Download Latest QR
                               </Button>
                             </a>
                           )}
